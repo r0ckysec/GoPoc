@@ -140,6 +140,12 @@ func (i *Interactsh) deleteMatches(key string, item *ccache.Item) bool {
 }
 
 func (i *Interactsh) forMatches(key string, item *ccache.Item) bool {
+	defer func() {
+		if err := recover(); err != nil {
+			// 打印异常，关闭资源，退出此函数
+			log.Warning(err)
+		}
+	}()
 	//fmt.Println("forMatches", key, item.Value(), item.Expired())
 	if item.Expired() {
 		//fmt.Println("is Expired", key)
@@ -209,4 +215,11 @@ func (i *Interactsh) Close() {
 	})
 	i.requestCache.Clear()
 	_ = i.client.Close()
+	i.state = false
+}
+
+func (i *Interactsh) Show() {
+	if i.state {
+		log.Blue("Cache最大值: %d 当前存在Cache: %d Dropped: %d", defaultMaxInteractionsCount, i.requestCache.ItemCount(), i.requestCache.GetDropped())
+	}
 }

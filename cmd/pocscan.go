@@ -84,15 +84,26 @@ func main() {
 	pocLen := len(core.SelectPoc(pocs))
 	log.Blue("载入POC数 %d 个", pocLen)
 	log.Green("Scanning ... ")
+	var tickerWatch = time.NewTicker(30 * time.Second)
+	defer tickerWatch.Stop()
+	go func() {
+		for {
+			select {
+			case <-tickerWatch.C:
+				scan.Show()
+				dns.ReverseHost.Show()
+			}
+		}
+	}()
 	//progress.Bar.ChangeMax(len(targets))
 	//progress.Bar.Describe("[cyan][Scanning][reset]")
 	//_ = progress.Bar.RenderBlank()
-	scan.OpenChannel()
-	go func() {
-		for v := range scan.Vul {
-			fmt.Println(v)
-		}
-	}()
+	//scan.OpenChannel()
+	//go func() {
+	//	for v := range scan.Vul {
+	//		fmt.Println(v)
+	//	}
+	//}()
 	scan.Scan(targets, pocs)
 	log.Blue("Scan Done.")
 }

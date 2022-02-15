@@ -39,6 +39,9 @@ type PocScan struct {
 	chanState bool
 }
 
+var lock = sync.Mutex{}
+var current = 0
+
 func NewPocScan() *PocScan {
 	return &PocScan{
 		Vuls:      make([]map[string]interface{}, 0, 128),
@@ -74,6 +77,10 @@ func (p *PocScan) SetVerbose(b bool) {
 func (p *PocScan) OpenChannel() {
 	p.chanState = true
 	p.Vul = make(chan map[string]interface{})
+}
+
+func (p *PocScan) Show() {
+	log.Blue("当前项目进度: %d 已命中漏洞: %d", current, len(p.Vuls))
 }
 
 //func (p *PocScan) BatchCheckSinglePoc(targets []string, pocName string, rate int) {
@@ -239,6 +246,9 @@ func checkVul(tasks []Task, ticker *time.Ticker) <-chan Task {
 			if isVul {
 				results <- task
 			}
+			lock.Lock()
+			current++
+			lock.Unlock()
 			//if progress.Bar != nil {
 			//	_ = progress.Bar.Add(1)
 			//}
