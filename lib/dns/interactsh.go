@@ -42,7 +42,7 @@ func NewInteractsh() *Interactsh {
 		state = false
 	}
 	configure := ccache.Configure()
-	configure = configure.MaxSize(defaultMaxInteractionsCount)
+	configure = configure.MaxSize(defaultMaxInteractionsCount).Buckets(64).GetsPerPromote(5).PromoteBuffer(2048)
 	cache := ccache.New(configure)
 	i := &Interactsh{
 		serverUrl:    "interact.sh",
@@ -220,6 +220,6 @@ func (i *Interactsh) Close() {
 
 func (i *Interactsh) Show() {
 	if i.state {
-		log.Blue("Cache最大值: %d 当前存在Cache: %d Dropped: %d", defaultMaxInteractionsCount, i.requestCache.ItemCount(), i.requestCache.GetDropped())
+		log.Blue("Cache最大值: %d 当前存在Cache: %d", defaultMaxInteractionsCount, i.requestCache.ItemCount())
 	}
 }

@@ -11,10 +11,10 @@ import (
 	"net/http"
 	"os"
 	"path"
-	"poc-go/lib"
 	"poc-go/lib/core"
 	"poc-go/lib/dns"
 	"poc-go/lib/log"
+	"poc-go/lib/run"
 	"sec-tools/bin/misc"
 	"sec-tools/goflags"
 	"strings"
@@ -67,9 +67,9 @@ func main() {
 		dns.ReverseHost.StartPolling()
 	}
 
-	scan := lib.NewPocScan()
+	scan := run.NewPocScan()
 	scan.SetProxy(Args.Proxy)
-	scan.SetTime(time.Duration(Args.Timeout))
+	scan.SetTime(time.Duration(Args.Timeout) * time.Second)
 	scan.SetThreads(Args.Threads)
 	scan.SetDebug(Args.Debug)
 	scan.SetVerbose(Args.Verbose)
@@ -84,17 +84,17 @@ func main() {
 	pocLen := len(core.SelectPoc(pocs))
 	log.Blue("载入POC数 %d 个", pocLen)
 	log.Green("Scanning ... ")
-	var tickerWatch = time.NewTicker(30 * time.Second)
-	defer tickerWatch.Stop()
-	go func() {
-		for {
-			select {
-			case <-tickerWatch.C:
-				scan.Show()
-				dns.ReverseHost.Show()
-			}
-		}
-	}()
+	//var tickerWatch = time.NewTicker(30 * time.Second)
+	//defer tickerWatch.Stop()
+	//go func() {
+	//	for {
+	//		select {
+	//		case <-tickerWatch.C:
+	//			scan.Show()
+	//			dns.ReverseHost.Show()
+	//		}
+	//	}
+	//}()
 	//progress.Bar.ChangeMax(len(targets))
 	//progress.Bar.Describe("[cyan][Scanning][reset]")
 	//_ = progress.Bar.RenderBlank()
