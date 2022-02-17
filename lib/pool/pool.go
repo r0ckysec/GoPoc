@@ -10,12 +10,12 @@ import (
 	"time"
 )
 
-//创建worker，每一个worker抽象成一个可以执行任务的函数
+// Worker 创建worker，每一个worker抽象成一个可以执行任务的函数
 type Worker struct {
 	f func(interface{}) (interface{}, error)
 }
 
-//通过NewTask来创建一个worker
+// NewWorker 通过NewTask来创建一个worker
 func NewWorker(f func(interface{}) interface{}) *Worker {
 	return &Worker{
 		f: func(in interface{}) (out interface{}, err error) {
@@ -31,12 +31,12 @@ func NewWorker(f func(interface{}) interface{}) *Worker {
 	}
 }
 
-//执行worker
+// Run 执行worker
 func (t *Worker) Run(in interface{}) (interface{}, error) {
 	return t.f(in)
 }
 
-//池
+// Pool 池
 type Pool struct {
 	//母版函数
 	Function func(interface{}) interface{}
@@ -58,7 +58,7 @@ type Pool struct {
 	Done bool
 }
 
-//实例化工作池使用
+// NewPool 实例化工作池使用
 func NewPool(threads int) *Pool {
 	return &Pool{
 		threads:  threads,
@@ -101,7 +101,7 @@ func (p *Pool) work() {
 	}
 }
 
-//执行工作池当中的任务
+// Run 执行工作池当中的任务
 func (p *Pool) Run() {
 	//只启动有限大小的协程，协程的数量不可以超过工作池设定的数量，防止计算资源崩溃
 	for i := 0; i < p.threads; i++ {
@@ -127,7 +127,7 @@ func (p *Pool) Wait() {
 	p.OutDone()
 }
 
-//结束输入信道
+// InDone 结束输入信道
 func (p *Pool) InDone() {
 	close(p.In)
 }

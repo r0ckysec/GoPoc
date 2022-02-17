@@ -14,6 +14,7 @@ import (
 	"gopkg.in/yaml.v2"
 	"math/rand"
 	"net/url"
+	"poc-go/lib/channel"
 	"poc-go/lib/dns"
 	"poc-go/lib/log"
 	"poc-go/lib/proto"
@@ -496,17 +497,24 @@ func reverseCheck(r *proto.Reverse, timeout int64) bool {
 	cache := dns.ReverseHost.GetRequestCache(r.Domain)
 	if cache != nil {
 		//fmt.Println("reverseCheck", cache)
-		result := cache.Value().(chan bool)
-		select {
-		case res := <-result:
-			//fmt.Println("reverseCheck", res)
-			if res {
-				dns.ReverseHost.DeleteCache(r.Domain)
-			} else {
-				dns.ReverseHost.ResetCache(r.Domain)
+		result := cache.Value().(*channel.Channel)
+		for {
+			select {
+			case res, ok := <-result.C:
+				if !ok {
+					return false
+				}
+				//fmt.Println("reverseCheck", res)
+				if res {
+					dns.ReverseHost.DeleteCache(r.Domain)
+				} else {
+					dns.ReverseHost.ResetCache(r.Domain)
+				}
+				return res
+			case <-timeOut.C:
+				result.SafeClose()
+				return false
 			}
-			return res
-		case <-timeOut.C:
 		}
 	}
 	return false

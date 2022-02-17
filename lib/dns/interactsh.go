@@ -10,6 +10,7 @@ import (
 	"github.com/projectdiscovery/interactsh/pkg/client"
 	"github.com/projectdiscovery/interactsh/pkg/server"
 	"github.com/thinkeridea/go-extend/exstrings"
+	"poc-go/lib/channel"
 	"poc-go/lib/log"
 	"strings"
 	"time"
@@ -49,7 +50,7 @@ func NewInteractsh() *Interactsh {
 		client:       c,
 		requestCache: cache,
 		state:        state,
-		pollDuration: 10 * time.Second,
+		pollDuration: DefaultWatchDuration,
 		tickerWatch:  time.NewTicker(DefaultWatchDuration),
 		tickerDelete: time.NewTicker(DefaultWatchDeleteDuration),
 	}
@@ -67,7 +68,7 @@ func (i *Interactsh) GetDomain() string {
 func (i *Interactsh) AddRequestCache(key string) {
 	index := strings.Index(key, i.serverUrl)
 	substr := exstrings.SubString(key, 0, index-1)
-	check := make(chan bool)
+	check := channel.NewChannel()
 	//fmt.Println("AddRequestCache", substr)
 	i.requestCache.Set(substr, check, DefaultInteractionDuration)
 }
@@ -83,10 +84,8 @@ func (i *Interactsh) DeleteCache(key string) {
 	substr := exstrings.SubString(key, 0, index-1)
 	item := i.requestCache.Get(substr)
 	if item != nil {
-		c := item.Value().(chan bool)
-		if !i.IsClosed(c) {
-			close(c)
-		}
+		c := item.Value().(*channel.Channel)
+		c.SafeClose()
 		//fmt.Println("delete", substr)
 		i.requestCache.Delete(substr)
 	}
@@ -130,37 +129,40 @@ func (i *Interactsh) deleteMatches(key string, item *ccache.Item) bool {
 	//fmt.Println("deleteMatches", key, item.Value(), item.Expired())
 	if item.Expired() {
 		//fmt.Println("is Expired", key)
-		c := item.Value().(chan bool)
-		if !i.IsClosed(c) {
-			close(c)
-		}
+		c := item.Value().(*channel.Channel)
+		c.SafeClose()
 		return true
 	}
 	return false
 }
 
 func (i *Interactsh) forMatches(key string, item *ccache.Item) bool {
+	//fmt.Println("forMatches", key, item.Value(), item.Expired())
+	if item.Expired() {
+		//fmt.Println("is Expired", key)
+		c := item.Value().(*channel.Channel)
+		i.send(c.C, false)
+		//c <- false
+	}
+	return true
+}
+
+func (i *Interactsh) send(ch chan bool, b bool) {
 	defer func() {
 		if err := recover(); err != nil {
 			// 打印异常，关闭资源，退出此函数
 			log.Warning(err)
 		}
 	}()
-	//fmt.Println("forMatches", key, item.Value(), item.Expired())
-	if item.Expired() {
-		//fmt.Println("is Expired", key)
-		c := item.Value().(chan bool)
-		if !i.IsClosed(c) {
-			c <- false
-		}
+	if !i.isChanClose(ch) {
+		ch <- b
 	}
-	return true
 }
 
-func (i *Interactsh) IsClosed(ch <-chan bool) bool {
+func (i *Interactsh) isChanClose(ch chan bool) bool {
 	select {
-	case <-ch:
-		return true
+	case _, received := <-ch:
+		return !received
 	default:
 	}
 	return false
@@ -172,33 +174,29 @@ func (i *Interactsh) checkPoll(interaction *server.Interaction) {
 		item := i.requestCache.Get(interaction.FullId)
 		//fmt.Println("checkPoll", item, interaction.FullId)
 		if item != nil {
-			if !i.IsClosed(item.Value().(chan bool)) {
-				item.Value().(chan bool) <- true
-			}
+			c := item.Value().(*channel.Channel)
+			i.send(c.C, true)
 		}
 	case "http":
 		item := i.requestCache.Get(interaction.FullId)
 		//fmt.Println("checkPoll", item, interaction.FullId)
 		if item != nil {
-			if !i.IsClosed(item.Value().(chan bool)) {
-				item.Value().(chan bool) <- true
-			}
+			c := item.Value().(*channel.Channel)
+			i.send(c.C, true)
 		}
 	case "smtp":
 		item := i.requestCache.Get(interaction.FullId)
 		//fmt.Println("checkPoll", item, interaction.FullId)
 		if item != nil {
-			if !i.IsClosed(item.Value().(chan bool)) {
-				item.Value().(chan bool) <- true
-			}
+			c := item.Value().(*channel.Channel)
+			i.send(c.C, true)
 		}
 	case "responder", "smb":
 		item := i.requestCache.Get(interaction.FullId)
 		//fmt.Println("checkPoll", item, interaction.FullId)
 		if item != nil {
-			if !i.IsClosed(item.Value().(chan bool)) {
-				item.Value().(chan bool) <- true
-			}
+			c := item.Value().(*channel.Channel)
+			i.send(c.C, true)
 		}
 	}
 }
@@ -207,10 +205,8 @@ func (i *Interactsh) Close() {
 	i.tickerWatch.Stop()
 	i.tickerDelete.Stop()
 	i.requestCache.DeleteFunc(func(key string, item *ccache.Item) bool {
-		c := item.Value().(chan bool)
-		if !i.IsClosed(c) {
-			close(c)
-		}
+		c := item.Value().(*channel.Channel)
+		c.SafeClose()
 		return true
 	})
 	i.requestCache.Clear()
@@ -220,6 +216,6 @@ func (i *Interactsh) Close() {
 
 func (i *Interactsh) Show() {
 	if i.state {
-		log.Blue("Cache最大值: %d 当前存在Cache: %d", DefaultMaxInteractionsCount, i.requestCache.ItemCount())
+		log.Blue("Cache最大值: %d 当前存在Cache: %d Dropped: %d", DefaultMaxInteractionsCount, i.requestCache.ItemCount(), i.requestCache.GetDropped())
 	}
 }

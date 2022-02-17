@@ -47,8 +47,8 @@ func NewWork(scan *PocScan) *pocwork {
 	p.pool.target = pool.NewPool(scan.threads)
 	p.pool.poc = pool.NewPool(scan.threads)
 
-	p.pool.target.Interval = time.Microsecond * 500
-	p.pool.poc.Interval = time.Microsecond * 500
+	//p.pool.target.Interval = time.Microsecond * 500
+	//p.pool.poc.Interval = time.Microsecond * 500
 
 	p.watchDog.output = make(chan interface{})
 	p.watchDog.wg = &sync.WaitGroup{}
@@ -126,7 +126,7 @@ func (p *pocwork) WatchDog() {
 		for true {
 			time.Sleep(60 * time.Second)
 			p.watchDog.trigger = false
-			dns.ReverseHost.Show()
+			//dns.ReverseHost.Show()
 		}
 	}()
 	//轮询触发器，每隔一段时间会检测触发器是否打开
@@ -137,13 +137,13 @@ func (p *pocwork) WatchDog() {
 				if num := p.pool.target.JobsList.Length(); num > 0 {
 					i := p.pool.target.JobsList.Peek()
 					info := i.(string)
-					log.Blue("正在进行目标队列梳理，其并发协程数为：%d，具体其中的一个协程信息为：%s", num, info)
+					log.Blue("正在进行目标队列梳理，其并发协程数为：%d，队列中协程数为：%d，具体其中的一个协程信息为：%s", num, p.pool.target.JobsList.Length(), info)
 					continue
 				}
 				if num := p.pool.poc.JobsList.Length(); num > 0 {
 					i := p.pool.poc.JobsList.Peek()
 					info := i.(Task)
-					log.Blue("正在进行POC扫描，其并发协程数为：%d，具体其中的一个协程信息为：%s %s", num, info.Req.URL, info.Poc.Name)
+					log.Blue("正在进行POC扫描，其并发协程数为：%d，队列中协程数为：%d，具体其中的一个协程信息为：%s %s", num, p.pool.poc.JobsList.Length(), info.Req.URL, info.Poc.Name)
 					continue
 				}
 			}
