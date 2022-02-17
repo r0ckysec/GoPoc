@@ -15,10 +15,10 @@ import (
 	"time"
 )
 
-const defaultMaxInteractionsCount = 5000
-const defaultInteractionDuration = 30 * time.Second
-const defaultWatchDuration = 10 * time.Second
-const defaultWatchDeleteDuration = 60 * time.Second
+const DefaultMaxInteractionsCount = 5000
+const DefaultInteractionDuration = 30 * time.Second
+const DefaultWatchDuration = 10 * time.Second
+const DefaultWatchDeleteDuration = 60 * time.Second
 
 type Interactsh struct {
 	serverUrl    string
@@ -42,7 +42,7 @@ func NewInteractsh() *Interactsh {
 		state = false
 	}
 	configure := ccache.Configure()
-	configure = configure.MaxSize(defaultMaxInteractionsCount).Buckets(64).GetsPerPromote(5).PromoteBuffer(2048)
+	configure = configure.MaxSize(DefaultMaxInteractionsCount).Buckets(64).GetsPerPromote(5).PromoteBuffer(2048)
 	cache := ccache.New(configure)
 	i := &Interactsh{
 		serverUrl:    "interact.sh",
@@ -50,8 +50,8 @@ func NewInteractsh() *Interactsh {
 		requestCache: cache,
 		state:        state,
 		pollDuration: 10 * time.Second,
-		tickerWatch:  time.NewTicker(defaultWatchDuration),
-		tickerDelete: time.NewTicker(defaultWatchDeleteDuration),
+		tickerWatch:  time.NewTicker(DefaultWatchDuration),
+		tickerDelete: time.NewTicker(DefaultWatchDeleteDuration),
 	}
 	return i
 }
@@ -69,7 +69,7 @@ func (i *Interactsh) AddRequestCache(key string) {
 	substr := exstrings.SubString(key, 0, index-1)
 	check := make(chan bool)
 	//fmt.Println("AddRequestCache", substr)
-	i.requestCache.Set(substr, check, defaultInteractionDuration)
+	i.requestCache.Set(substr, check, DefaultInteractionDuration)
 }
 
 func (i *Interactsh) GetRequestCache(key string) *ccache.Item {
@@ -97,7 +97,7 @@ func (i *Interactsh) ResetCache(key string) {
 	substr := exstrings.SubString(key, 0, index-1)
 	item := i.requestCache.Get(substr)
 	if item != nil {
-		item.Extend(defaultInteractionDuration)
+		item.Extend(DefaultInteractionDuration)
 		//fmt.Println("ResetCache", substr, item.Expires())
 	}
 }
@@ -220,6 +220,6 @@ func (i *Interactsh) Close() {
 
 func (i *Interactsh) Show() {
 	if i.state {
-		log.Blue("Cache最大值: %d 当前存在Cache: %d", defaultMaxInteractionsCount, i.requestCache.ItemCount())
+		log.Blue("Cache最大值: %d 当前存在Cache: %d", DefaultMaxInteractionsCount, i.requestCache.ItemCount())
 	}
 }

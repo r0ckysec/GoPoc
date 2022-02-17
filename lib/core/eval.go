@@ -488,21 +488,26 @@ func randomLowercase(n int) string {
 
 func reverseCheck(r *proto.Reverse, timeout int64) bool {
 	ticker := time.NewTicker(time.Second * time.Duration(timeout))
+	timeOut := time.NewTicker(dns.DefaultWatchDeleteDuration)
 	defer ticker.Stop()
+	defer timeOut.Stop()
 	<-ticker.C
 
 	cache := dns.ReverseHost.GetRequestCache(r.Domain)
 	if cache != nil {
 		//fmt.Println("reverseCheck", cache)
 		result := cache.Value().(chan bool)
-		res := <-result
-		//fmt.Println("reverseCheck", res)
-		if res {
-			dns.ReverseHost.DeleteCache(r.Domain)
-		} else {
-			dns.ReverseHost.ResetCache(r.Domain)
+		select {
+		case res := <-result:
+			//fmt.Println("reverseCheck", res)
+			if res {
+				dns.ReverseHost.DeleteCache(r.Domain)
+			} else {
+				dns.ReverseHost.ResetCache(r.Domain)
+			}
+			return res
+		case <-timeOut.C:
 		}
-		return res
 	}
 	return false
 	//if global.CeyeApi == "" || r.Domain == "" {
