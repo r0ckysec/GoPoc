@@ -1,6 +1,7 @@
 package run
 
 import (
+	"context"
 	"fmt"
 	"github.com/google/cel-go/cel"
 	cmap "github.com/orcaman/concurrent-map"
@@ -27,7 +28,15 @@ import (
  * @Date 2022/2/15 13:59
  */
 
+//10分钟的超时设置
+const timeout = time.Minute * 10
+
 type pocwork struct {
+	flag struct {
+		sync.RWMutex
+		Current int
+		Total   int
+	}
 	pool struct {
 		target *pool.Pool
 		poc    *pool.Pool
@@ -47,8 +56,8 @@ func NewWork(scan *PocScan) *pocwork {
 	p.pool.target = pool.NewPool(scan.threads)
 	p.pool.poc = pool.NewPool(scan.threads)
 
-	//p.pool.target.Interval = time.Microsecond * 500
-	//p.pool.poc.Interval = time.Microsecond * 500
+	p.pool.target.Interval = time.Microsecond * 10
+	p.pool.poc.Interval = time.Microsecond * 10
 
 	p.watchDog.output = make(chan interface{})
 	p.watchDog.wg = &sync.WaitGroup{}
@@ -71,6 +80,9 @@ func (p *pocwork) TargetFactory(hostArr []string) {
 	}
 	//目标列表进入流水线
 	go func() {
+		p.flag.Lock()
+		p.flag.Total = len(hostArr)
+		p.flag.Unlock()
 		for _, host := range hostArr {
 			//fmt.Println(host)
 			p.pool.target.In <- host
@@ -84,10 +96,18 @@ func (p *pocwork) TargetFactory(hostArr []string) {
 
 func (p *pocwork) PocFactory(pocName string) {
 	pocs := core.LoadMultiPoc(pocName)
+	p.flag.Lock()
+	p.flag.Total = p.flag.Total * len(pocs)
+	p.flag.Unlock()
 	//处理目标方法
 	p.pool.poc.Function = func(i interface{}) interface{} {
+		defer func() {
+			p.flag.Lock()
+			p.flag.Current++
+			p.flag.Unlock()
+		}()
 		task := i.(Task)
-		isVul, err := ExecutePoc(task.Req, task.Poc, task.Resp)
+		isVul, err := ExecutePoc(context.Background(), task.Req, task.Poc, task.Resp)
 		if err != nil {
 			log.Error(task.Poc.Name, err)
 			//os.Exit(0)
@@ -120,7 +140,6 @@ func (p *pocwork) PocFactory(pocName string) {
 
 func (p *pocwork) WatchDog() {
 
-	p.watchDog.wg.Add(1)
 	//触发器校准，每隔60秒会将触发器关闭
 	go func() {
 		for true {
@@ -143,17 +162,20 @@ func (p *pocwork) WatchDog() {
 				if num := p.pool.poc.JobsList.Length(); num > 0 {
 					i := p.pool.poc.JobsList.Peek()
 					info := i.(Task)
-					log.Blue("正在进行POC扫描，其并发协程数为：%d，队列中协程数为：%d，具体其中的一个协程信息为：%s %s", num, p.pool.poc.JobsList.Length(), info.Req.URL, info.Poc.Name)
+					log.Blue("正在进行POC扫描，其并发协程数为：%d，并发进度：[%d/%d]，队列中协程数为：%d，具体其中的一个协程信息为：%s %s", num, p.flag.Current, p.flag.Total, p.pool.poc.JobsList.Length(), info.Req.URL, info.Poc.Name)
 					continue
 				}
 			}
 		}
 	}()
 
-	for out := range p.pool.poc.Out {
-		p.watchDog.output <- out
-	}
-	p.watchDog.wg.Done()
+	p.watchDog.wg.Add(1)
+	go func() {
+		defer p.watchDog.wg.Done()
+		for out := range p.pool.poc.Out {
+			p.watchDog.output <- out
+		}
+	}()
 
 	p.watchDog.wg.Wait()
 	close(p.watchDog.output)
@@ -203,7 +225,27 @@ func (p *pocwork) Output() {
 	}
 }
 
-func ExecutePoc(oReq *http.Request, p *core.Poc, resp cmap.ConcurrentMap) (bool, error) {
+func ExecutePoc(ctx context.Context, oReq *http.Request, p *core.Poc, resp cmap.ConcurrentMap) (bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel() //纯粹出于良好习惯，函数退出前调用cancel()
+	done := make(chan struct{}, 1)
+	res := false
+	var err error
+	go func() {
+		defer func() {
+			done <- struct{}{}
+		}()
+		res, err = executePoc(oReq, p, resp)
+	}()
+	select {
+	case <-done:
+	case <-ctx.Done():
+		log.WarningF("协程超时退出 %s %s", oReq.URL.String(), p.Name)
+	}
+	return res, err
+}
+
+func executePoc(oReq *http.Request, p *core.Poc, resp cmap.ConcurrentMap) (bool, error) {
 	log.Debug(oReq.URL.String(), p.Name)
 	c := core.NewEnvOption()
 	c.UpdateCompileOptions(p.Set)
