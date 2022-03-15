@@ -5,18 +5,18 @@ import (
 	"fmt"
 	"github.com/google/cel-go/cel"
 	cmap "github.com/orcaman/concurrent-map"
+	"github.com/r0ckysec/go-security/bin/misc"
+	"github.com/r0ckysec/go-security/log"
 	"github.com/thinkeridea/go-extend/exbytes"
 	"github.com/thinkeridea/go-extend/exstrings"
 	"net/http"
 	"net/url"
 	"poc-go/lib/core"
 	"poc-go/lib/dns"
-	"poc-go/lib/log"
 	"poc-go/lib/pool"
 	"poc-go/lib/proto"
 	"poc-go/lib/utils"
 	"regexp"
-	"sec-tools/bin/misc"
 	"strings"
 	"sync"
 	"time"
@@ -196,7 +196,7 @@ func (p *pocwork) Output() {
 				continue
 			}
 			vul := out.(Task)
-			log.IsVul("%s %s", vul.Req.URL, vul.Poc.Name)
+			log.Hack("%s %s", vul.Req.URL, vul.Poc.Name)
 			//scan := cmap.New()
 			//var reqraw string
 			//var resp *proto.Response

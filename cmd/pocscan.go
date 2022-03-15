@@ -7,16 +7,16 @@ package main
 
 import (
 	"fmt"
+	"github.com/r0ckysec/go-security/bin/misc"
+	"github.com/r0ckysec/go-security/goflags"
+	"github.com/r0ckysec/go-security/log"
 	"github.com/thinkeridea/go-extend/exstrings"
 	"net/http"
 	"os"
 	"path"
 	"poc-go/lib/core"
 	"poc-go/lib/dns"
-	"poc-go/lib/log"
 	"poc-go/lib/run"
-	"sec-tools/bin/misc"
-	"sec-tools/goflags"
 	"strings"
 	"time"
 )
@@ -54,7 +54,7 @@ func main() {
 	}()
 
 	flagParse()
-	log.InitLog(Args.Debug, Args.Verbose)
+	//log.SetDebug()
 	//if progress.Bar != nil {
 	//	defer progress.Bar.Close()
 	//}

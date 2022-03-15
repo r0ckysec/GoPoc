@@ -9,9 +9,9 @@ import (
 	"github.com/karlseguin/ccache/v2"
 	"github.com/projectdiscovery/interactsh/pkg/client"
 	"github.com/projectdiscovery/interactsh/pkg/server"
+	"github.com/r0ckysec/go-security/log"
 	"github.com/thinkeridea/go-extend/exstrings"
 	"poc-go/lib/channel"
-	"poc-go/lib/log"
 	"strings"
 	"time"
 )

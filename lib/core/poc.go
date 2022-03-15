@@ -1,12 +1,12 @@
 package core
 
 import (
+	"github.com/r0ckysec/go-security/log"
 	"github.com/thinkeridea/go-extend/exstrings"
 	"github.com/thoas/go-funk"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"path/filepath"
-	"poc-go/lib/log"
 	"poc-go/lib/utils"
 	"regexp"
 	"strings"

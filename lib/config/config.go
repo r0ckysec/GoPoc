@@ -7,10 +7,10 @@ package config
 
 import (
 	"github.com/jinzhu/configor"
+	"github.com/r0ckysec/go-security/bin/misc"
+	"github.com/r0ckysec/go-security/log"
 	"os"
 	"path"
-	"poc-go/lib/log"
-	"sec-tools/bin/misc"
 )
 
 var Config = struct {

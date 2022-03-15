@@ -5,7 +5,8 @@ import (
 	"compress/gzip"
 	"crypto/tls"
 	"fmt"
-	"github.com/thinkeridea/go-extend/exstrings"
+	"github.com/r0ckysec/go-security/bin/misc"
+	"github.com/r0ckysec/go-security/secio"
 	"io"
 	"io/ioutil"
 	"log"
@@ -15,7 +16,6 @@ import (
 	"net/url"
 	"poc-go/lib/proto"
 	"poc-go/lib/utils/chinese"
-	"sec-tools/secio"
 	"strconv"
 	"strings"
 	"time"
@@ -139,7 +139,7 @@ func ParseRequest(oReq *http.Request) (*proto.Request, error) {
 	for k := range oReq.Header {
 		header[k] = new(proto.MapValue)
 		header[k].List = oReq.Header.Values(k)
-		header[k].Bytes = exstrings.Bytes(strings.Join(header[k].List, "; "))
+		header[k].Bytes = misc.Str2Bytes(strings.Join(header[k].List, "; "))
 	}
 	req.Headers = header
 	req.ContentType = oReq.Header.Get("Content-Type")
@@ -165,7 +165,7 @@ func ParseResponse(oResp *http.Response) (*proto.Response, error) {
 	for k := range oResp.Header {
 		header[k] = new(proto.MapValue)
 		header[k].List = oResp.Header.Values(k)
-		header[k].Bytes = exstrings.Bytes(strings.Join(header[k].List, "; "))
+		header[k].Bytes = misc.Str2Bytes(strings.Join(header[k].List, "; "))
 	}
 	resp.Headers = header
 	resp.ContentType = oResp.Header.Get("Content-Type")
@@ -226,7 +226,7 @@ func Header2String(header http.Header) string {
 	for i := range header {
 		hs := header.Values(i)
 		for _, h := range hs {
-			result.Write(exstrings.Bytes(fmt.Sprintf("%s: %s\n", i, h)))
+			result.Write(misc.Str2Bytes(fmt.Sprintf("%s: %s\n", i, h)))
 		}
 	}
 	return result.String()
@@ -260,7 +260,7 @@ func GetProtoRespHeaderRaw(resp *proto.Response) string {
 	defer result.Reset()
 	headerRaw := fmt.Sprintf("%s %s\n", resp.Proto, resp.StatusMsg)
 	for k, v := range resp.Headers {
-		result.Write(exstrings.Bytes(fmt.Sprintf("%s: %s\n", k, v.String())))
+		result.Write(misc.Str2Bytes(fmt.Sprintf("%s: %s\n", k, v.String())))
 	}
 	headerRaw += result.String()
 	return headerRaw

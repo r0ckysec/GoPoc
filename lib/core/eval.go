@@ -10,13 +10,13 @@ import (
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/google/cel-go/interpreter/functions"
+	"github.com/r0ckysec/go-security/log"
 	exprpb "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
 	"gopkg.in/yaml.v2"
 	"math/rand"
 	"net/url"
 	"poc-go/lib/channel"
 	"poc-go/lib/dns"
-	"poc-go/lib/log"
 	"poc-go/lib/proto"
 	"poc-go/lib/utils"
 	"regexp"
@@ -31,7 +31,7 @@ func NewEnv(c *CustomLib) (*cel.Env, error) {
 func Evaluate(env *cel.Env, expression string, params map[string]interface{}) (ref.Val, error) {
 	ast, iss := env.Compile(expression)
 	if iss.Err() != nil {
-		log.Error("compile: ", iss.Err())
+		log.ErrorF("compile: %v", iss.Err())
 		return nil, iss.Err()
 	}
 

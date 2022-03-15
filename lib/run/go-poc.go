@@ -2,9 +2,9 @@ package run
 
 import (
 	cmap "github.com/orcaman/concurrent-map"
+	"github.com/r0ckysec/go-security/log"
 	"net/http"
 	"poc-go/lib/core"
-	"poc-go/lib/log"
 	"poc-go/lib/utils"
 	"time"
 )
@@ -69,7 +69,11 @@ func (p *PocScan) SetVerbose(b bool) {
 //}
 
 func (p *PocScan) Scan(targets []string, poc string) {
-	log.InitLog(p.debug, p.verbose)
+	if p.debug {
+		log.SetDebug()
+	} else if p.verbose {
+		log.SetVerbose()
+	}
 	err := utils.InitHttpClient(p.threads, p.proxy, p.time)
 	if err != nil {
 		log.Error(err)
