@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/r0ckysec/go-security/log"
 	"github.com/r0ckysec/go-security/random"
-	"poc-go/lib/smap"
+	"gopoc/lib/smap"
 	"sync"
 	"time"
 )

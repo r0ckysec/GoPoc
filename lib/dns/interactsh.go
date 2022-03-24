@@ -11,7 +11,7 @@ import (
 	"github.com/projectdiscovery/interactsh/pkg/server"
 	"github.com/r0ckysec/go-security/log"
 	"github.com/thinkeridea/go-extend/exstrings"
-	"poc-go/lib/channel"
+	"gopoc/lib/channel"
 	"strings"
 	"time"
 )

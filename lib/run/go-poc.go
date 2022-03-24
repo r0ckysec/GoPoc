@@ -3,9 +3,9 @@ package run
 import (
 	cmap "github.com/orcaman/concurrent-map"
 	"github.com/r0ckysec/go-security/log"
+	"gopoc/lib/core"
+	"gopoc/lib/utils"
 	"net/http"
-	"poc-go/lib/core"
-	"poc-go/lib/utils"
 	"time"
 )
 
@@ -30,6 +30,7 @@ type PocScan struct {
 	time    time.Duration
 	debug   bool
 	verbose bool
+	webhook string
 	//chanState bool
 }
 
@@ -63,6 +64,10 @@ func (p *PocScan) SetVerbose(b bool) {
 	p.verbose = b
 }
 
+func (p *PocScan) SetWebhook(wh string) {
+	p.webhook = wh
+}
+
 //func (p *PocScan) OpenChannel() {
 //	p.chanState = true
 //	p.Vul = make(chan map[string]interface{})
@@ -94,5 +99,5 @@ func (p *PocScan) Scan(targets []string, poc string) {
 	go work.PocFactory(poc)
 
 	//STEP3: 输出
-	work.Output()
+	work.Output(p.webhook)
 }

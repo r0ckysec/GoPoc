@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"github.com/r0ckysec/go-security/bin/misc"
 	"github.com/r0ckysec/go-security/secio"
+	"gopoc/lib/proto"
+	"gopoc/lib/utils/chinese"
 	"io"
 	"io/ioutil"
 	"log"
@@ -14,8 +16,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"poc-go/lib/proto"
-	"poc-go/lib/utils/chinese"
 	"strconv"
 	"strings"
 	"time"
@@ -260,10 +260,21 @@ func GetProtoRespHeaderRaw(resp *proto.Response) string {
 	defer result.Reset()
 	headerRaw := fmt.Sprintf("%s %s\n", resp.Proto, resp.StatusMsg)
 	for k, v := range resp.Headers {
-		result.Write(misc.Str2Bytes(fmt.Sprintf("%s: %s\n", k, v.String())))
+		for _, s := range v.List {
+			result.Write(misc.Str2Bytes(fmt.Sprintf("%s: %s\n", k, s)))
+		}
 	}
 	headerRaw += result.String()
 	return headerRaw
+}
+
+func GetResponseRaw(resp *proto.Response) string {
+	buffer := bytes.Buffer{}
+	defer buffer.Reset()
+	buffer.WriteString(GetProtoRespHeaderRaw(resp))
+	buffer.WriteString("\n")
+	buffer.Write(resp.Body)
+	return buffer.String()
 }
 
 func GetRequestRaw(req *http.Request) string {

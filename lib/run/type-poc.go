@@ -2,20 +2,23 @@ package run
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/google/cel-go/cel"
 	cmap "github.com/orcaman/concurrent-map"
+	"github.com/panjf2000/ants/v2"
 	"github.com/r0ckysec/go-security/bin/misc"
+	http2 "github.com/r0ckysec/go-security/fasthttp"
 	"github.com/r0ckysec/go-security/log"
 	"github.com/thinkeridea/go-extend/exbytes"
 	"github.com/thinkeridea/go-extend/exstrings"
+	"gopoc/lib/core"
+	"gopoc/lib/dns"
+	"gopoc/lib/pool"
+	"gopoc/lib/proto"
+	"gopoc/lib/utils"
 	"net/http"
 	"net/url"
-	"poc-go/lib/core"
-	"poc-go/lib/dns"
-	"poc-go/lib/pool"
-	"poc-go/lib/proto"
-	"poc-go/lib/utils"
 	"regexp"
 	"strings"
 	"sync"
@@ -47,6 +50,14 @@ type pocwork struct {
 		wg      *sync.WaitGroup
 		trigger bool
 	}
+}
+
+type VulRes struct {
+	Url         string `json:"url"`
+	PocName     string `json:"poc_name"`
+	RequestRaw  string `json:"request_raw"`
+	ResponseRaw string `json:"response_raw"`
+	CreateTime  int64  `json:"create_time"`
 }
 
 func NewWork(scan *PocScan) *pocwork {
@@ -181,7 +192,13 @@ func (p *pocwork) WatchDog() {
 	close(p.watchDog.output)
 }
 
-func (p *pocwork) Output() {
+func (p *pocwork) Output(wh string) {
+	newPool, err := ants.NewPool(100)
+	if err != nil {
+		return
+	}
+	defer newPool.Release()
+	request := http2.NewRequest()
 	//输出POC命中结果
 	for out := range p.watchDog.output {
 		if out == nil {
@@ -197,31 +214,28 @@ func (p *pocwork) Output() {
 			}
 			vul := out.(Task)
 			log.Hack("%s %s", vul.Req.URL, vul.Poc.Name)
-			//scan := cmap.New()
-			//var reqraw string
-			//var resp *proto.Response
-			//if request, ok := vul.Resp.Get("request"); ok {
-			//	reqraw = request.(string)
-			//}
-			//if response, ok := vul.Resp.Get("response"); ok {
-			//	resp = response.(*proto.Response)
-			//} else {
-			//	resp = &proto.Response{}
-			//}
-			//scan.Set("URL", fmt.Sprintf("%s", vul.Req.URL))
-			//scan.Set("PocName", vul.Poc.Name)
-			//scan.Set("RequestRaw", reqraw)
-			//scan.Set("ResponseHeaderRaw", utils.GetProtoRespHeaderRaw(resp))
-			//scan.Set("ResponseBody", exbytes.ToString(resp.Body))
-			////p.Vuls = append(p.Vuls, scan.Items())
-			////if p.chanState {
-			////	p.Vul <- scan.Items()
-			////}
+			if wh != "" {
+				vul.Resp.Items()
+				v := new(VulRes)
+				v.CreateTime = time.Now().UnixNano() / 1e6
+				v.Url = vul.Req.URL.String()
+				v.PocName = vul.Poc.Name
+				if request, ok := vul.Resp.Get("request"); ok {
+					v.RequestRaw = request.(string)
+				}
+				if response, ok := vul.Resp.Get("response"); ok {
+					resp := response.(*proto.Response)
+					v.ResponseRaw = utils.GetResponseRaw(resp)
+				}
+				bytes, err := json.Marshal(v)
+				if err != nil {
+					return
+				}
+				_ = newPool.Submit(func() {
+					_, _ = request.Post(wh, misc.Bytes2Str(bytes))
+				})
+			}
 		}
-		//slog.Data(disp)
-		//if k.config.Output != nil {
-		//	k.config.WriteLine(write)
-		//}
 	}
 }
 

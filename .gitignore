@@ -1,6 +1,9 @@
 .idea
+**/.DS_Store
 poc+
 pocs
-pocscan
+gopoc
 test
 target.txt
+dist/
+.goreleaser.yaml

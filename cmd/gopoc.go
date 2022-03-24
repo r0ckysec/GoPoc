@@ -11,12 +11,12 @@ import (
 	"github.com/r0ckysec/go-security/goflags"
 	"github.com/r0ckysec/go-security/log"
 	"github.com/thinkeridea/go-extend/exstrings"
+	"gopoc/lib/core"
+	"gopoc/lib/dns"
+	"gopoc/lib/run"
 	"net/http"
 	"os"
 	"path"
-	"poc-go/lib/core"
-	"poc-go/lib/dns"
-	"poc-go/lib/run"
 	"strings"
 	"time"
 )
@@ -26,13 +26,14 @@ type args struct {
 	Debug, Verbose            bool
 	Threads, Timeout          int
 	Target, List, Proxy, Pocs string
+	Webhook                   string
 }
 
 var Args = args{}
 
 func flagParse() {
 	flagSet := goflags.NewFlagSet()
-	flagSet.SetDescription(`PocScan 基于xray匹配规则的批量poc检测工具 by r0cky from Zionlab`)
+	flagSet.SetDescription(`GoPoc 基于xray匹配规则的批量poc检测工具 by r0cky from Zionlab`)
 	flagSet.BoolVarP(&Args.Debug, "debug", "d", false, "Enable debug mode.")
 	flagSet.BoolVarP(&Args.Verbose, "verbose", "v", false, "Enable verbose mode.")
 	flagSet.IntVarP(&Args.Threads, "threads", "T", 10, "并发线程数")
@@ -40,6 +41,7 @@ func flagParse() {
 	flagSet.StringVarP(&Args.Proxy, "proxy", "P", "", "设置代理")
 	flagSet.StringVarP(&Args.Target, "target", "t", "", "单个或的多个目标测试")
 	flagSet.StringVarP(&Args.Pocs, "pocs", "p", "pocs", "加载poc路径")
+	flagSet.StringVarP(&Args.Webhook, "webhook", "wh", "", "设置Webhook输出地址")
 	_ = flagSet.Parse()
 
 	if len(os.Args) < 2 {
@@ -73,12 +75,13 @@ func main() {
 	scan.SetThreads(Args.Threads)
 	scan.SetDebug(Args.Debug)
 	scan.SetVerbose(Args.Verbose)
+	scan.SetWebhook(Args.Webhook)
 
 	targets := targetParse(Args.Target)
 	//pocs := pocParse(Args.Pocs)
 
 	//targets := []string{"http://target:8989"} //, "http://target:8080"
-	//pocs := "D:\\GoLand\\works\\poc-go\\poc+\\cve-2021-44228-log4j2rce.yml"
+	//pocs := "D:\\GoLand\\works\\gopoc\\poc+\\cve-2021-44228-log4j2rce.yml"
 	log.Blue("载入目标 %d 个", len(targets))
 	log.Blue("载入POC路径 => %s", Args.Pocs)
 	pocLen := len(core.SelectPoc(Args.Pocs))

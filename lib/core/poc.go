@@ -5,9 +5,9 @@ import (
 	"github.com/thinkeridea/go-extend/exstrings"
 	"github.com/thoas/go-funk"
 	"gopkg.in/yaml.v2"
+	"gopoc/lib/utils"
 	"io/ioutil"
 	"path/filepath"
-	"poc-go/lib/utils"
 	"strings"
 )
 
