@@ -490,10 +490,8 @@ github.com/prometheus/procfs v0.0.0-20181005140218-185b4288413d/go.mod h1:c3At6R
 github.com/prometheus/procfs v0.0.0-20190117184657-bf6a532e95b1/go.mod h1:c3At6R/oaqEKCNdg8wHV1ftS6bRYblBhIjjI8uT2IGk=
 github.com/prometheus/procfs v0.0.2/go.mod h1:TjEm7ze935MbeOT/UhFTIMYKhuLP4wbCsTZCD3I8kEA=
 github.com/prometheus/procfs v0.0.8/go.mod h1:7Qr8sr6344vo1JqZ6HhLceV9o3AJ1Ff+GxbHq6oeK9A=
-github.com/r0ckysec/go-security v0.1.9 h1:upehSXLW3u172KY1IQvC5Ha0s8pO4NQcqtlXa/GRjLA=
-github.com/r0ckysec/go-security v0.1.9/go.mod h1:Cu4+viRffjL5oVZK9EZRebMk17Q8csTlzUdollhppG8=
-github.com/r0ckysec/go-security v0.1.10 h1:KNe2mTe0AF/6zgCZwtAQdkXbryoRwCPV4ia9D/1XQtU=
-github.com/r0ckysec/go-security v0.1.10/go.mod h1:Cu4+viRffjL5oVZK9EZRebMk17Q8csTlzUdollhppG8=
+github.com/r0ckysec/go-security v0.1.11 h1:f85sWiAAila1rbONAi6VbQpn5exYWaLdGkHkqRBzusM=
+github.com/r0ckysec/go-security v0.1.11/go.mod h1:Cu4+viRffjL5oVZK9EZRebMk17Q8csTlzUdollhppG8=
 github.com/rcrowley/go-metrics v0.0.0-20181016184325-3113b8401b8a/go.mod h1:bCqnVzQkZxMG4s8nGwiZ5l3QUCyqpo9Y+/ZMZ9VjZe4=
 github.com/remeh/sizedwaitgroup v1.0.0/go.mod h1:3j2R4OIe/SeS6YDhICBy22RWjJC5eNCJ1V+9+NVNYlo=
 github.com/rivo/uniseg v0.2.0 h1:S1pD9weZBuJdFmowNwbpi7BJ8TNftyUImj/0WQi72jY=

@@ -75,13 +75,13 @@ func main() {
 	scan.SetVerbose(Args.Verbose)
 
 	targets := targetParse(Args.Target)
-	pocs := pocParse(Args.Pocs)
+	//pocs := pocParse(Args.Pocs)
 
 	//targets := []string{"http://target:8989"} //, "http://target:8080"
 	//pocs := "D:\\GoLand\\works\\poc-go\\poc+\\cve-2021-44228-log4j2rce.yml"
 	log.Blue("载入目标 %d 个", len(targets))
-	log.Blue("载入POC路径 => %s", pocs)
-	pocLen := len(core.SelectPoc(pocs))
+	log.Blue("载入POC路径 => %s", Args.Pocs)
+	pocLen := len(core.SelectPoc(Args.Pocs))
 	log.Blue("载入POC数 %d 个", pocLen)
 	log.Green("Scanning ... ")
 	//var tickerWatch = time.NewTicker(30 * time.Second)
@@ -104,7 +104,7 @@ func main() {
 	//		fmt.Println(v)
 	//	}
 	//}()
-	scan.Scan(targets, pocs)
+	scan.Scan(targets, Args.Pocs)
 	log.Blue("Scan Done.")
 }
 

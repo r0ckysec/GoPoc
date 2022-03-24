@@ -65,6 +65,16 @@ func GetFileNames(dir string, ext string) []string {
 	return files
 }
 
+func GetFileExt(file []string, ext string) []string {
+	var files []string
+	for _, f := range file {
+		if strings.HasSuffix(f, ext) {
+			files = append(files, f)
+		}
+	}
+	return files
+}
+
 // FileExists check if file is exist or not
 func FileExists(filename string) bool {
 	info, err := os.Stat(filename)

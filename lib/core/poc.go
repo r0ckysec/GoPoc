@@ -8,7 +8,6 @@ import (
 	"io/ioutil"
 	"path/filepath"
 	"poc-go/lib/utils"
-	"regexp"
 	"strings"
 )
 
@@ -82,29 +81,13 @@ func singlePoc(fileName string) []string {
 	// get more poc
 	if strings.Contains(fileName, "*") && strings.Contains(fileName, "/") {
 		asbPath, _ := filepath.Abs(fileName)
-		baseSelect := filepath.Base(fileName)
-		files := utils.GetFileNames(filepath.Dir(asbPath), "yml")
-		files_yaml := utils.GetFileNames(filepath.Dir(asbPath), "yaml")
-		files = append(files, files_yaml...)
-		//fmt.Println(files, baseSelect, asbPath)
-		for _, f := range files {
-			baseFile := filepath.Base(f)
-			//if len(baseFile) == 1 && baseFile == "*" {
-			if len(baseSelect) == 1 && baseSelect == "*" { //baseSelect为*则全部加入
-				foundFiles = append(foundFiles, f)
-				continue
-			}
-			if r, err := regexp.Compile(baseSelect); err != nil { //不符合正则表达式，如单个*，或者具体文件名
-				//fmt.Println(f, baseSelect)
-				if strings.Contains(f, baseSelect) {
-					foundFiles = append(foundFiles, f)
-				}
-			} else { //符合正则表达式，如.*
-				if r.MatchString(baseFile) {
-					foundFiles = append(foundFiles, f)
-				}
-			}
+		//baseSelect := filepath.Base(fileName)
+		glob, err := filepath.Glob(asbPath)
+		if err != nil {
+			return foundFiles
 		}
+		foundFiles = append(foundFiles, utils.GetFileExt(glob, "yml")...)
+		foundFiles = append(foundFiles, utils.GetFileExt(glob, "yaml")...)
 	}
 	return foundFiles
 }
