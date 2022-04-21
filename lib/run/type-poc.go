@@ -452,7 +452,11 @@ func (p *PocWork) doPaths(env *cel.Env, rule *core.Rule, variableMap cmap.Concur
 		variableMap.Set("response", resp)
 		result.Set("request", reqRaw)
 		result.Set("response", respRaw)
-		result.Set("content_length", resp.ContentLength)
+		if resp != nil {
+			result.Set("content_length", resp.ContentLength)
+		} else {
+			result.Set("content_length", 0)
+		}
 		// 将响应头加入search规则
 		//headerRaw := header.String()
 		//if header != nil {

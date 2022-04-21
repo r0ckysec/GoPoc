@@ -15,12 +15,11 @@ require (
 )
 
 require (
-	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/jinzhu/configor v1.2.1
 	github.com/karlseguin/ccache/v2 v2.0.8
 	github.com/orcaman/concurrent-map v1.0.0
 	github.com/panjf2000/ants/v2 v2.4.8
 	github.com/r0ckysec/go-security v0.2.3
 	github.com/schollz/progressbar/v3 v3.8.5
-	github.com/valyala/fasthttp v1.34.0 // indirect
+	github.com/valyala/fasthttp v1.34.0
 )
