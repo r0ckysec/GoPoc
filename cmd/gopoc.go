@@ -8,54 +8,24 @@ package main
 import (
 	"fmt"
 	"github.com/r0ckysec/go-security/bin/misc"
-	"github.com/r0ckysec/go-security/goflags"
 	"github.com/r0ckysec/go-security/log"
 	"github.com/thinkeridea/go-extend/exstrings"
+	"gopoc/lib/args"
 	"gopoc/lib/core"
 	"gopoc/lib/dns"
 	"gopoc/lib/run"
 	"net/http"
-	"os"
-	"path"
 	"strings"
 	"time"
 )
 import _ "net/http/pprof"
-
-type args struct {
-	Debug, Verbose            bool
-	Threads, Timeout          int
-	Target, List, Proxy, Pocs string
-	Webhook                   string
-}
-
-var Args = args{}
-
-func flagParse() {
-	flagSet := goflags.NewFlagSet()
-	flagSet.SetDescription(`GoPoc 基于xray匹配规则的批量poc检测工具 by r0cky from Zionlab`)
-	flagSet.BoolVarP(&Args.Debug, "debug", "d", false, "Enable debug mode.")
-	flagSet.BoolVarP(&Args.Verbose, "verbose", "v", false, "Enable verbose mode.")
-	flagSet.IntVarP(&Args.Threads, "threads", "T", 10, "并发线程数")
-	flagSet.IntVarP(&Args.Timeout, "timeout", "tO", 10, "请求超时时间")
-	flagSet.StringVarP(&Args.Proxy, "proxy", "P", "", "设置代理")
-	flagSet.StringVarP(&Args.Target, "target", "t", "", "单个或的多个目标测试")
-	flagSet.StringVarP(&Args.Pocs, "pocs", "p", "pocs", "加载poc路径")
-	flagSet.StringVarP(&Args.Webhook, "webhook", "wh", "", "设置Webhook输出地址")
-	_ = flagSet.Parse()
-
-	if len(os.Args) < 2 {
-		flagSet.CommandLine.Usage()
-		os.Exit(0)
-	}
-}
 
 func main() {
 	go func() {
 		fmt.Println(http.ListenAndServe("0.0.0.0:8989", nil))
 	}()
 
-	flagParse()
+	args.FlagParse()
 	//log.SetDebug()
 	//if progress.Bar != nil {
 	//	defer progress.Bar.Close()
@@ -70,21 +40,21 @@ func main() {
 	}
 
 	scan := run.NewPocScan()
-	scan.SetProxy(Args.Proxy)
-	scan.SetTime(time.Duration(Args.Timeout) * time.Second)
-	scan.SetThreads(Args.Threads)
-	scan.SetDebug(Args.Debug)
-	scan.SetVerbose(Args.Verbose)
-	scan.SetWebhook(Args.Webhook)
+	//scan.SetProxy(Args.Proxy)
+	scan.SetTime(time.Duration(args.Option.Timeout) * time.Second)
+	scan.SetThreads(args.Option.Threads)
+	scan.SetDebug(args.Option.Debug)
+	scan.SetVerbose(args.Option.Verbose)
+	scan.SetWebhook(args.Option.Webhook)
 
-	targets := targetParse(Args.Target)
+	targets := targetParse(args.Option.Target)
 	//pocs := pocParse(Args.Pocs)
 
 	//targets := []string{"http://target:8989"} //, "http://target:8080"
 	//pocs := "D:\\GoLand\\works\\gopoc\\poc+\\cve-2021-44228-log4j2rce.yml"
 	log.Blue("载入目标 %d 个", len(targets))
-	log.Blue("载入POC路径 => %s", Args.Pocs)
-	pocLen := len(core.SelectPoc(Args.Pocs))
+	log.Blue("载入POC路径 => %s", args.Option.Pocs)
+	pocLen := len(core.SelectPoc(args.Option.Pocs))
 	log.Blue("载入POC数 %d 个", pocLen)
 	log.Green("Scanning ... ")
 	//var tickerWatch = time.NewTicker(30 * time.Second)
@@ -107,7 +77,7 @@ func main() {
 	//		fmt.Println(v)
 	//	}
 	//}()
-	scan.Scan(targets, Args.Pocs)
+	scan.Scan(targets, args.Option.Pocs)
 	log.Blue("Scan Done.")
 }
 
@@ -123,10 +93,10 @@ func targetParse(str string) []string {
 	}
 }
 
-func pocParse(s string) string {
-	if strings.HasSuffix(s, ".yml") || strings.HasSuffix(s, ".yaml") {
-		return s
-	} else {
-		return path.Join(s, "*")
-	}
-}
+//func pocParse(s string) string {
+//	if strings.HasSuffix(s, ".yml") || strings.HasSuffix(s, ".yaml") {
+//		return s
+//	} else {
+//		return path.Join(s, "*")
+//	}
+//}

@@ -100,7 +100,6 @@ func NewEnvOption() CustomLib {
 			&proto.Request{},
 			&proto.Response{},
 			&proto.Reverse{},
-			&proto.MapValue{},
 		),
 		cel.Declarations(
 			decls.NewIdent("request", decls.NewObjectType("proto.Request"), nil),
@@ -394,31 +393,41 @@ func NewEnvOption() CustomLib {
 			&functions.Overload{
 				Operator: "icontains_string",
 				Binary: func(lhs ref.Val, rhs ref.Val) ref.Val {
+					v1, ok := lhs.(types.String)
+					if !ok {
+						return types.ValOrErr(lhs, "unexpected type '%v' passed to bcontains", lhs.Type())
+					}
 					v2, ok := rhs.(types.String)
 					if !ok {
-						return types.ValOrErr(rhs, "unexpected type '%v' passed to icontains", rhs.Type())
+						return types.ValOrErr(rhs, "unexpected type '%v' passed to bcontains", rhs.Type())
 					}
-					if lhs.Type().TypeName() == "proto.MapValue" {
-						v1, ok := lhs.Value().(*proto.MapValue)
-						if !ok {
-							return types.ValOrErr(lhs, "unexpected type '%v' passed to icontains", lhs.Type())
-						}
-						for _, s := range v1.List {
-							ok = strings.Contains(strings.ToLower(s), strings.ToLower(string(v2)))
-							if ok {
-								break
-							}
-						}
-						// 不区分大小写包含
-						return types.Bool(ok)
-					} else {
-						v1, ok := lhs.(types.Bytes)
-						if !ok {
-							return types.ValOrErr(lhs, "unexpected type '%v' passed to icontains", lhs.Type())
-						}
-						// 不区分大小写包含
-						return types.Bool(strings.Contains(strings.ToLower(string(v1)), strings.ToLower(string(v2))))
-					}
+					// 不区分大小写包含
+					return types.Bool(strings.Contains(strings.ToLower(string(v1)), strings.ToLower(string(v2))))
+					//v2, ok := rhs.(types.String)
+					//if !ok {
+					//	return types.ValOrErr(rhs, "unexpected type '%v' passed to icontains", rhs.Type())
+					//}
+					//if lhs.Type().TypeName() == "proto.MapValue" {
+					//	v1, ok := lhs.Value().(*proto.MapValue)
+					//	if !ok {
+					//		return types.ValOrErr(lhs, "unexpected type '%v' passed to icontains", lhs.Type())
+					//	}
+					//	for _, s := range v1.List {
+					//		ok = strings.Contains(strings.ToLower(s), strings.ToLower(string(v2)))
+					//		if ok {
+					//			break
+					//		}
+					//	}
+					//	// 不区分大小写包含
+					//	return types.Bool(ok)
+					//} else {
+					//	v1, ok := lhs.(types.Bytes)
+					//	if !ok {
+					//		return types.ValOrErr(lhs, "unexpected type '%v' passed to icontains", lhs.Type())
+					//	}
+					//	// 不区分大小写包含
+					//	return types.Bool(strings.Contains(strings.ToLower(string(v1)), strings.ToLower(string(v2))))
+					//}
 				},
 			},
 			&functions.Overload{

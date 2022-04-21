@@ -4,7 +4,6 @@ import (
 	cmap "github.com/orcaman/concurrent-map"
 	"github.com/r0ckysec/go-security/log"
 	"gopoc/lib/core"
-	"gopoc/lib/utils"
 	"net/http"
 	"time"
 )
@@ -16,9 +15,9 @@ import (
  */
 
 type Task struct {
-	Req  *http.Request
-	Poc  *core.Poc
-	Resp cmap.ConcurrentMap
+	Req    *http.Request
+	Poc    *core.Poc
+	Result cmap.ConcurrentMap
 }
 
 type PocScan struct {
@@ -79,10 +78,10 @@ func (p *PocScan) Scan(targets []string, poc string) {
 	} else if p.verbose {
 		log.SetVerbose()
 	}
-	err := utils.InitHttpClient(p.threads, p.proxy, p.time)
-	if err != nil {
-		log.Error(err)
-	}
+	//err := utils.InitHttpClient(p.threads, p.proxy, p.time)
+	//if err != nil {
+	//	log.Error(err)
+	//}
 
 	work := NewWork(p)
 

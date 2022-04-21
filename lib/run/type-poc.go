@@ -10,10 +10,11 @@ import (
 	"github.com/r0ckysec/go-security/bin/misc"
 	http2 "github.com/r0ckysec/go-security/fasthttp"
 	"github.com/r0ckysec/go-security/log"
-	"github.com/thinkeridea/go-extend/exbytes"
 	"github.com/thinkeridea/go-extend/exstrings"
+	"gopoc/lib/args"
 	"gopoc/lib/core"
 	"gopoc/lib/dns"
+	http3 "gopoc/lib/http"
 	"gopoc/lib/pool"
 	"gopoc/lib/proto"
 	"gopoc/lib/utils"
@@ -118,7 +119,7 @@ func (p *pocwork) PocFactory(pocName string) {
 			p.flag.Unlock()
 		}()
 		task := i.(Task)
-		isVul, err := ExecutePoc(context.Background(), task.Req, task.Poc, task.Resp)
+		isVul, err := ExecutePoc(context.Background(), task.Req, task.Poc, task.Result)
 		if err != nil {
 			log.Error(task.Poc.Name, err)
 			//os.Exit(0)
@@ -135,9 +136,9 @@ func (p *pocwork) PocFactory(pocName string) {
 			req := target.(*http.Request)
 			for _, poc := range pocs {
 				task := Task{
-					Req:  req,
-					Poc:  poc,
-					Resp: cmap.New(),
+					Req:    req,
+					Poc:    poc,
+					Result: cmap.New(),
 				}
 				p.pool.poc.In <- task
 			}
@@ -215,17 +216,15 @@ func (p *pocwork) Output(wh string) {
 			vul := out.(Task)
 			log.Hack("%s %s", vul.Req.URL, vul.Poc.Name)
 			if wh != "" {
-				vul.Resp.Items()
 				v := new(VulRes)
 				v.CreateTime = time.Now().UnixNano() / 1e6
 				v.Url = vul.Req.URL.String()
 				v.PocName = vul.Poc.Name
-				if request, ok := vul.Resp.Get("request"); ok {
+				if request, ok := vul.Result.Get("request"); ok {
 					v.RequestRaw = request.(string)
 				}
-				if response, ok := vul.Resp.Get("response"); ok {
-					resp := response.(*proto.Response)
-					v.ResponseRaw = utils.GetResponseRaw(resp)
+				if response, ok := vul.Result.Get("response"); ok {
+					v.ResponseRaw = response.(string)
 				}
 				bytes, err := json.Marshal(v)
 				if err != nil {
@@ -239,7 +238,7 @@ func (p *pocwork) Output(wh string) {
 	}
 }
 
-func ExecutePoc(ctx context.Context, oReq *http.Request, p *core.Poc, resp cmap.ConcurrentMap) (bool, error) {
+func ExecutePoc(ctx context.Context, oReq *http.Request, p *core.Poc, result cmap.ConcurrentMap) (bool, error) {
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel() //纯粹出于良好习惯，函数退出前调用cancel()
 	done := make(chan struct{}, 1)
@@ -249,7 +248,7 @@ func ExecutePoc(ctx context.Context, oReq *http.Request, p *core.Poc, resp cmap.
 		defer func() {
 			done <- struct{}{}
 		}()
-		res, err = executePoc(oReq, p, resp)
+		res, err = executePoc(oReq, p, result)
 	}()
 	select {
 	case <-done:
@@ -259,7 +258,7 @@ func ExecutePoc(ctx context.Context, oReq *http.Request, p *core.Poc, resp cmap.
 	return res, err
 }
 
-func executePoc(oReq *http.Request, p *core.Poc, resp cmap.ConcurrentMap) (bool, error) {
+func executePoc(oReq *http.Request, p *core.Poc, result cmap.ConcurrentMap) (bool, error) {
 	log.Debug(oReq.URL.String(), p.Name)
 	c := core.NewEnvOption()
 	c.UpdateCompileOptions(p.Set)
@@ -269,7 +268,7 @@ func executePoc(oReq *http.Request, p *core.Poc, resp cmap.ConcurrentMap) (bool,
 		return false, err
 	}
 	variableMap := cmap.New()
-	req, err := utils.ParseRequest(oReq)
+	req, err := http3.ParseRequest(oReq)
 	if err != nil {
 		log.Error(err)
 		return false, err
@@ -322,17 +321,17 @@ func executePoc(oReq *http.Request, p *core.Poc, resp cmap.ConcurrentMap) (bool,
 	//}
 
 	if p.Groups != nil {
-		return doGroups(env, p.Groups, variableMap, oReq, req, resp)
+		return doGroups(env, p.Groups, variableMap, oReq, req, result)
 	} else {
-		return doRules(env, p.Rules, variableMap, oReq, req, resp)
+		return doRules(env, p.Rules, variableMap, oReq, req, result)
 	}
 
 }
 
-func doGroups(env *cel.Env, groups map[string][]*core.Rule, variableMap cmap.ConcurrentMap, oReq *http.Request, req *proto.Request, resp cmap.ConcurrentMap) (bool, error) {
+func doGroups(env *cel.Env, groups map[string][]*core.Rule, variableMap cmap.ConcurrentMap, oReq *http.Request, req *proto.Request, result cmap.ConcurrentMap) (bool, error) {
 	// groups 就是多个rules 任何一个rules成功 即返回成功
 	for _, rules := range groups {
-		rulesResult, err := doRules(env, rules, variableMap, oReq, req, resp)
+		rulesResult, err := doRules(env, rules, variableMap, oReq, req, result)
 		if err != nil || !rulesResult {
 			continue
 		}
@@ -344,10 +343,10 @@ func doGroups(env *cel.Env, groups map[string][]*core.Rule, variableMap cmap.Con
 	return false, nil
 }
 
-func doRules(env *cel.Env, rules []*core.Rule, variableMap cmap.ConcurrentMap, oReq *http.Request, req *proto.Request, resp cmap.ConcurrentMap) (bool, error) {
+func doRules(env *cel.Env, rules []*core.Rule, variableMap cmap.ConcurrentMap, oReq *http.Request, req *proto.Request, result cmap.ConcurrentMap) (bool, error) {
 	success := false
 	for _, rule := range rules {
-		pathsResult, err := doPaths(env, rule, variableMap, oReq, req, resp)
+		pathsResult, err := doPaths(env, rule, variableMap, oReq, req, result)
 		if err != nil || !pathsResult {
 			success = false
 			break
@@ -357,7 +356,7 @@ func doRules(env *cel.Env, rules []*core.Rule, variableMap cmap.ConcurrentMap, o
 	return success, nil
 }
 
-func doPaths(env *cel.Env, rule *core.Rule, variableMap cmap.ConcurrentMap, oReq *http.Request, req *proto.Request, resultResp cmap.ConcurrentMap) (bool, error) {
+func doPaths(env *cel.Env, rule *core.Rule, variableMap cmap.ConcurrentMap, oReq *http.Request, req *proto.Request, result cmap.ConcurrentMap) (bool, error) {
 	// paths 就是多个path 任何一个path成功 即返回成功
 	success := false
 	var paths []string
@@ -404,38 +403,48 @@ func doPaths(env *cel.Env, rule *core.Rule, variableMap cmap.ConcurrentMap, oReq
 		req.Url.Path = exstrings.Replace(req.Url.Path, " ", "%20", -1)
 		req.Url.Path = exstrings.Replace(req.Url.Path, "+", "%20", -1)
 
-		newRequest, err := http.NewRequest(rule.Method, fmt.Sprintf("%s://%s%s", req.Url.Scheme, req.Url.Host, req.Url.Path), strings.NewReader(body))
-		if err != nil {
-			log.Error(err)
-			return false, err
-		}
-		newRequest.Header = oReq.Header.Clone()
+		newRequest := http2.NewRequest()
+		newRequest.SetProxy(args.Option.Proxy)
 		for tuple := range headers.IterBuffered() {
-			newRequest.Header.Set(tuple.Key, tuple.Val.(string))
+			newRequest.SetHeaders(tuple.Key, tuple.Val.(string))
 		}
-		resp, header, err := utils.DoRequest(newRequest, rule.FollowRedirects)
+		if rule.FollowRedirects {
+			newRequest.SetRedirects(5)
+		}
+		//newRequest, err := http.NewRequest(rule.Method, fmt.Sprintf("%s://%s%s", req.Url.Scheme, req.Url.Host, req.Url.Path), strings.NewReader(body))
+		//if err != nil {
+		//	log.Error(err)
+		//	return false, err
+		//}
+		//newRequest.Header = oReq.Header.Clone()
+		//for tuple := range headers.IterBuffered() {
+		//	newRequest.Header.Set(tuple.Key, tuple.Val.(string))
+		//}
+		resp, reqRaw, respRaw, err := http3.DoRequest(newRequest, rule.Method, fmt.Sprintf("%s://%s%s", req.Url.Scheme, req.Url.Host, req.Url.Path), body)
 		if err != nil {
 			if !strings.Contains(rule.Expression, ".wait(") {
 				return false, err
 			}
 		}
-		if resp == nil {
-			resp = &proto.Response{}
-		}
+		//if resp == nil {
+		//	resp = &proto.Response{}
+		//}
 		variableMap.Set("response", resp)
-		resultResp.Set("response", resp)
-		resultResp.Set("request", utils.GetRequestRaw(newRequest))
+		result.Set("request", reqRaw)
+		result.Set("response", respRaw)
 		// 将响应头加入search规则
-		headerRaw := utils.Header2String(header)
-
+		//headerRaw := header.String()
+		//if header != nil {
+		//	header.Reset()
+		//}
 		// 先判断响应页面是否匹配search规则
 		if rule.Search != "" {
-			result := doSearch(strings.TrimSpace(rule.Search), headerRaw+exbytes.ToString(resp.Body))
+			result := doSearch(strings.TrimSpace(rule.Search), respRaw)
 			if result != nil && len(result) > 0 { // 正则匹配成功
 				for k, v := range result {
 					variableMap.Set(k, v)
 				}
-				return false, nil
+				//return true, nil
 			} else {
 				return false, nil
 			}
@@ -470,7 +479,8 @@ func doSearch(re string, body string) map[string]string {
 		paramsMap := make(map[string]string)
 		for _, r := range result {
 			for i, name := range names {
-				if i > 0 && i <= len(r) && r[i] != "" {
+				_, ok := paramsMap[name]
+				if i > 0 && i <= len(r) && r[i] != "" && !ok {
 					paramsMap[name] = r[i]
 				}
 			}
@@ -494,7 +504,7 @@ func newReverse() *proto.Reverse {
 	u, _ := url.Parse(urlStr)
 	dns.ReverseHost.AddRequestCache(u.Hostname())
 	return &proto.Reverse{
-		Url:                utils.ParseUrl(u),
+		Url:                http3.ParseUrl(u),
 		Domain:             u.Hostname(),
 		Ip:                 "",
 		IsDomainNameServer: false,
