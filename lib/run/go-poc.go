@@ -84,6 +84,8 @@ func (p *PocScan) Scan(targets []string, poc string) {
 	//}
 
 	config := Config{
+		Target:  targets,
+		PocName: poc,
 		Proxy:   p.proxy,
 		Threads: p.threads,
 		Timeout: p.time,
@@ -97,11 +99,11 @@ func (p *PocScan) Scan(targets []string, poc string) {
 
 	//STEP1: 目标调度器
 	time.Sleep(time.Microsecond * 200)
-	go work.TargetFactory(targets)
+	go work.TargetFactory()
 
 	//STEP2: POC调度器
 	time.Sleep(time.Microsecond * 200)
-	go work.PocFactory(poc)
+	go work.PocFactory()
 
 	//STEP3: 输出
 	work.Output()

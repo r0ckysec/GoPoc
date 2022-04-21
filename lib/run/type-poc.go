@@ -55,6 +55,8 @@ type PocWork struct {
 }
 
 type Config struct {
+	Target  []string
+	PocName string
 	Proxy   string
 	Threads int
 	Timeout time.Duration
@@ -76,8 +78,14 @@ func NewWork(config Config) *PocWork {
 		config: config,
 	}
 
-	p.pool.target = pool.NewPool(p.config.Threads)
-	p.pool.poc = pool.NewPool(p.config.Threads)
+	hostThreads := len(p.config.Target)
+	hostThreads = hostThreads/5 + 1
+	if hostThreads > 400 {
+		hostThreads = 400
+	}
+
+	p.pool.target = pool.NewPool(hostThreads)
+	p.pool.poc = pool.NewPool(p.config.Threads * 4)
 
 	p.pool.target.Interval = time.Microsecond * 10
 	p.pool.poc.Interval = time.Microsecond * 10
@@ -90,7 +98,7 @@ func NewWork(config Config) *PocWork {
 	return p
 }
 
-func (p *PocWork) TargetFactory(hostArr []string) {
+func (p *PocWork) TargetFactory() {
 	//处理目标方法
 	p.pool.target.Function = func(i interface{}) interface{} {
 		target := i.(string)
@@ -104,9 +112,9 @@ func (p *PocWork) TargetFactory(hostArr []string) {
 	//目标列表进入流水线
 	go func() {
 		p.flag.Lock()
-		p.flag.Total = len(hostArr)
+		p.flag.Total = len(p.config.Target)
 		p.flag.Unlock()
-		for _, host := range hostArr {
+		for _, host := range p.config.Target {
 			//fmt.Println(host)
 			p.pool.target.In <- host
 		}
@@ -117,8 +125,8 @@ func (p *PocWork) TargetFactory(hostArr []string) {
 	p.pool.target.Run()
 }
 
-func (p *PocWork) PocFactory(pocName string) {
-	pocs := core.LoadMultiPoc(pocName)
+func (p *PocWork) PocFactory() {
+	pocs := core.LoadMultiPoc(p.config.PocName)
 	p.flag.Lock()
 	p.flag.Total = p.flag.Total * len(pocs)
 	p.flag.Unlock()
@@ -182,11 +190,16 @@ func (p *PocWork) WatchDog() {
 		for true {
 			time.Sleep(waitTime)
 			if p.watchDog.trigger == false {
+				var b float64
+				if p.flag.Total > 0 {
+					b = float64(p.flag.Current) / float64(p.flag.Total) * 100
+				}
 				log.Blue(
-					"当前运行情况为:目标主机序列并发 [%d], POC检测并发 [%d], 并发进度：[%d/%d]",
+					"当前运行情况为:目标主机序列并发 [%d], POC检测并发 [%d], 并发进度：[%d/%d] %s",
 					p.pool.target.JobsList.Length(),
 					p.pool.poc.JobsList.Length(),
 					p.flag.Current, p.flag.Total,
+					fmt.Sprintf("%.2f%%", b),
 				)
 			}
 		}
