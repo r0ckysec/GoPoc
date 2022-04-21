@@ -93,6 +93,7 @@ func ParseResponse(Url string, body []byte, headers *fasthttp.ResponseHeader) (*
 	}
 	resp.Headers = header
 	resp.ContentType = misc.Bytes2Str(headers.ContentType())
+	resp.ContentLength = int32(headers.ContentLength())
 	resp.Body = body
 	return resp, nil
 }

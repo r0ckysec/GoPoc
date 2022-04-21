@@ -83,7 +83,13 @@ func (p *PocScan) Scan(targets []string, poc string) {
 	//	log.Error(err)
 	//}
 
-	work := NewWork(p)
+	config := Config{
+		Proxy:   p.proxy,
+		Threads: p.threads,
+		Timeout: p.time,
+		Webhook: p.webhook,
+	}
+	work := NewWork(config)
 
 	//STEP0: 扫描结果调度器
 	time.Sleep(time.Microsecond * 200)
@@ -98,5 +104,5 @@ func (p *PocScan) Scan(targets []string, poc string) {
 	go work.PocFactory(poc)
 
 	//STEP3: 输出
-	work.Output(p.webhook)
+	work.Output()
 }

@@ -40,7 +40,7 @@ func main() {
 	}
 
 	scan := run.NewPocScan()
-	//scan.SetProxy(Args.Proxy)
+	scan.SetProxy(args.Option.Proxy)
 	scan.SetTime(time.Duration(args.Option.Timeout) * time.Second)
 	scan.SetThreads(args.Option.Threads)
 	scan.SetDebug(args.Option.Debug)

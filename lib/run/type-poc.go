@@ -11,7 +11,6 @@ import (
 	http2 "github.com/r0ckysec/go-security/fasthttp"
 	"github.com/r0ckysec/go-security/log"
 	"github.com/thinkeridea/go-extend/exstrings"
-	"gopoc/lib/args"
 	"gopoc/lib/core"
 	"gopoc/lib/dns"
 	http3 "gopoc/lib/http"
@@ -23,6 +22,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -35,8 +35,9 @@ import (
 //10分钟的超时设置
 const timeout = time.Minute * 10
 
-type pocwork struct {
-	flag struct {
+type PocWork struct {
+	config Config
+	flag   struct {
 		sync.RWMutex
 		Current int
 		Total   int
@@ -53,20 +54,30 @@ type pocwork struct {
 	}
 }
 
-type VulRes struct {
-	Url         string `json:"url"`
-	PocName     string `json:"poc_name"`
-	RequestRaw  string `json:"request_raw"`
-	ResponseRaw string `json:"response_raw"`
-	CreateTime  int64  `json:"create_time"`
+type Config struct {
+	Proxy   string
+	Threads int
+	Timeout time.Duration
+	Webhook string
 }
 
-func NewWork(scan *PocScan) *pocwork {
+type VulRes struct {
+	Url           string `json:"url"`
+	PocName       string `json:"poc_name"`
+	RequestRaw    string `json:"request_raw"`
+	ResponseRaw   string `json:"response_raw"`
+	ContentLength int32  `json:"content_length"`
+	CreateTime    int64  `json:"create_time"`
+}
 
-	p := &pocwork{}
+func NewWork(config Config) *PocWork {
 
-	p.pool.target = pool.NewPool(scan.threads)
-	p.pool.poc = pool.NewPool(scan.threads)
+	p := &PocWork{
+		config: config,
+	}
+
+	p.pool.target = pool.NewPool(p.config.Threads)
+	p.pool.poc = pool.NewPool(p.config.Threads)
 
 	p.pool.target.Interval = time.Microsecond * 10
 	p.pool.poc.Interval = time.Microsecond * 10
@@ -79,7 +90,7 @@ func NewWork(scan *PocScan) *pocwork {
 	return p
 }
 
-func (p *pocwork) TargetFactory(hostArr []string) {
+func (p *PocWork) TargetFactory(hostArr []string) {
 	//处理目标方法
 	p.pool.target.Function = func(i interface{}) interface{} {
 		target := i.(string)
@@ -106,7 +117,7 @@ func (p *pocwork) TargetFactory(hostArr []string) {
 	p.pool.target.Run()
 }
 
-func (p *pocwork) PocFactory(pocName string) {
+func (p *PocWork) PocFactory(pocName string) {
 	pocs := core.LoadMultiPoc(pocName)
 	p.flag.Lock()
 	p.flag.Total = p.flag.Total * len(pocs)
@@ -119,7 +130,7 @@ func (p *pocwork) PocFactory(pocName string) {
 			p.flag.Unlock()
 		}()
 		task := i.(Task)
-		isVul, err := ExecutePoc(context.Background(), task.Req, task.Poc, task.Result)
+		isVul, err := p.ExecutePoc(context.Background(), task.Req, task.Poc, task.Result)
 		if err != nil {
 			log.Error(task.Poc.Name, err)
 			//os.Exit(0)
@@ -132,16 +143,28 @@ func (p *pocwork) PocFactory(pocName string) {
 	}
 	//POC列表进入流水线
 	go func() {
+		var wg int32 = 0
+		var threads = p.config.Threads
 		for target := range p.pool.target.Out {
 			req := target.(*http.Request)
-			for _, poc := range pocs {
-				task := Task{
-					Req:    req,
-					Poc:    poc,
-					Result: cmap.New(),
+			atomic.AddInt32(&wg, 1)
+			go func() {
+				defer func() { atomic.AddInt32(&wg, -1) }()
+				for _, poc := range pocs {
+					task := Task{
+						Req:    req,
+						Poc:    poc,
+						Result: cmap.New(),
+					}
+					p.pool.poc.In <- task
 				}
-				p.pool.poc.In <- task
+			}()
+			for int(wg) >= threads {
+				time.Sleep(1 * time.Second)
 			}
+		}
+		for wg > 0 {
+			time.Sleep(1 * time.Second)
 		}
 		p.pool.poc.InDone()
 	}()
@@ -150,50 +173,43 @@ func (p *pocwork) PocFactory(pocName string) {
 	p.pool.poc.Run()
 }
 
-func (p *pocwork) WatchDog() {
-
-	//触发器校准，每隔60秒会将触发器关闭
-	go func() {
-		for true {
-			time.Sleep(60 * time.Second)
-			p.watchDog.trigger = false
-			//dns.ReverseHost.Show()
-		}
-	}()
+func (p *PocWork) WatchDog() {
+	p.watchDog.wg.Add(1)
+	//触发器轮询时间
+	waitTime := 30 * time.Second
 	//轮询触发器，每隔一段时间会检测触发器是否打开
 	go func() {
 		for true {
-			time.Sleep(59 * time.Second)
+			time.Sleep(waitTime)
 			if p.watchDog.trigger == false {
-				if num := p.pool.target.JobsList.Length(); num > 0 {
-					i := p.pool.target.JobsList.Peek()
-					info := i.(string)
-					log.Blue("正在进行目标队列梳理，其并发协程数为：%d，队列中协程数为：%d，具体其中的一个协程信息为：%s", num, p.pool.target.JobsList.Length(), info)
-					continue
-				}
-				if num := p.pool.poc.JobsList.Length(); num > 0 {
-					i := p.pool.poc.JobsList.Peek()
-					info := i.(Task)
-					log.Blue("正在进行POC扫描，其并发协程数为：%d，并发进度：[%d/%d]，队列中协程数为：%d，具体其中的一个协程信息为：%s %s", num, p.flag.Current, p.flag.Total, p.pool.poc.JobsList.Length(), info.Req.URL, info.Poc.Name)
-					continue
-				}
+				log.Blue(
+					"当前运行情况为:目标主机序列并发 [%d], POC检测并发 [%d], 并发进度：[%d/%d]",
+					p.pool.target.JobsList.Length(),
+					p.pool.poc.JobsList.Length(),
+					p.flag.Current, p.flag.Total,
+				)
 			}
 		}
 	}()
-
-	p.watchDog.wg.Add(1)
+	time.Sleep(time.Millisecond * 500)
+	//触发器校准，每隔一段时间将触发器关闭
+	go func() {
+		for true {
+			time.Sleep(waitTime)
+			p.watchDog.trigger = false
+		}
+	}()
 	go func() {
 		defer p.watchDog.wg.Done()
 		for out := range p.pool.poc.Out {
 			p.watchDog.output <- out
 		}
 	}()
-
 	p.watchDog.wg.Wait()
 	close(p.watchDog.output)
 }
 
-func (p *pocwork) Output(wh string) {
+func (p *PocWork) Output() {
 	newPool, err := ants.NewPool(100)
 	if err != nil {
 		return
@@ -215,7 +231,7 @@ func (p *pocwork) Output(wh string) {
 			}
 			vul := out.(Task)
 			log.Hack("%s %s", vul.Req.URL, vul.Poc.Name)
-			if wh != "" {
+			if p.config.Webhook != "" {
 				v := new(VulRes)
 				v.CreateTime = time.Now().UnixNano() / 1e6
 				v.Url = vul.Req.URL.String()
@@ -226,19 +242,22 @@ func (p *pocwork) Output(wh string) {
 				if response, ok := vul.Result.Get("response"); ok {
 					v.ResponseRaw = response.(string)
 				}
+				if contentLength, ok := vul.Result.Get("content_length"); ok {
+					v.ContentLength = contentLength.(int32)
+				}
 				bytes, err := json.Marshal(v)
 				if err != nil {
 					return
 				}
 				_ = newPool.Submit(func() {
-					_, _ = request.Post(wh, misc.Bytes2Str(bytes))
+					_, _ = request.Post(p.config.Webhook, misc.Bytes2Str(bytes))
 				})
 			}
 		}
 	}
 }
 
-func ExecutePoc(ctx context.Context, oReq *http.Request, p *core.Poc, result cmap.ConcurrentMap) (bool, error) {
+func (p *PocWork) ExecutePoc(ctx context.Context, oReq *http.Request, poc *core.Poc, result cmap.ConcurrentMap) (bool, error) {
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel() //纯粹出于良好习惯，函数退出前调用cancel()
 	done := make(chan struct{}, 1)
@@ -248,20 +267,20 @@ func ExecutePoc(ctx context.Context, oReq *http.Request, p *core.Poc, result cma
 		defer func() {
 			done <- struct{}{}
 		}()
-		res, err = executePoc(oReq, p, result)
+		res, err = p.executePoc(oReq, poc, result)
 	}()
 	select {
 	case <-done:
 	case <-ctx.Done():
-		log.WarningF("协程超时退出 %s %s", oReq.URL.String(), p.Name)
+		log.WarningF("协程超时退出 %s %s", oReq.URL.String(), poc.Name)
 	}
 	return res, err
 }
 
-func executePoc(oReq *http.Request, p *core.Poc, result cmap.ConcurrentMap) (bool, error) {
-	log.Debug(oReq.URL.String(), p.Name)
+func (p *PocWork) executePoc(oReq *http.Request, poc *core.Poc, result cmap.ConcurrentMap) (bool, error) {
+	log.Debug(oReq.URL.String(), poc.Name)
 	c := core.NewEnvOption()
-	c.UpdateCompileOptions(p.Set)
+	c.UpdateCompileOptions(poc.Set)
 	env, err := core.NewEnv(&c)
 	if err != nil {
 		log.ErrorF("environment creation error: %s\n", err)
@@ -282,7 +301,7 @@ func executePoc(oReq *http.Request, p *core.Poc, result cmap.ConcurrentMap) (boo
 	//}
 	//sort.Strings(keys)
 
-	for _, setItem := range p.Set {
+	for _, setItem := range poc.Set {
 		key := setItem.Key.(string)
 		value := setItem.Value.(string)
 		//expression := p.Set[k]
@@ -290,7 +309,7 @@ func executePoc(oReq *http.Request, p *core.Poc, result cmap.ConcurrentMap) (boo
 		//if k != "payload" {
 		// 反连平台
 		if value == "newReverse()" {
-			variableMap.Set(key, newReverse())
+			variableMap.Set(key, p.newReverse())
 			//get, _ := variableMap.Get(key)
 			//fmt.Println(get, oReq.URL.String())
 			continue
@@ -320,18 +339,18 @@ func executePoc(oReq *http.Request, p *core.Poc, result cmap.ConcurrentMap) (boo
 	//	variableMap["payload"] = fmt.Sprintf("%v", out)
 	//}
 
-	if p.Groups != nil {
-		return doGroups(env, p.Groups, variableMap, oReq, req, result)
+	if poc.Groups != nil {
+		return p.doGroups(env, poc.Groups, variableMap, oReq, req, result)
 	} else {
-		return doRules(env, p.Rules, variableMap, oReq, req, result)
+		return p.doRules(env, poc.Rules, variableMap, oReq, req, result)
 	}
 
 }
 
-func doGroups(env *cel.Env, groups map[string][]*core.Rule, variableMap cmap.ConcurrentMap, oReq *http.Request, req *proto.Request, result cmap.ConcurrentMap) (bool, error) {
+func (p *PocWork) doGroups(env *cel.Env, groups map[string][]*core.Rule, variableMap cmap.ConcurrentMap, oReq *http.Request, req *proto.Request, result cmap.ConcurrentMap) (bool, error) {
 	// groups 就是多个rules 任何一个rules成功 即返回成功
 	for _, rules := range groups {
-		rulesResult, err := doRules(env, rules, variableMap, oReq, req, result)
+		rulesResult, err := p.doRules(env, rules, variableMap, oReq, req, result)
 		if err != nil || !rulesResult {
 			continue
 		}
@@ -343,10 +362,10 @@ func doGroups(env *cel.Env, groups map[string][]*core.Rule, variableMap cmap.Con
 	return false, nil
 }
 
-func doRules(env *cel.Env, rules []*core.Rule, variableMap cmap.ConcurrentMap, oReq *http.Request, req *proto.Request, result cmap.ConcurrentMap) (bool, error) {
+func (p *PocWork) doRules(env *cel.Env, rules []*core.Rule, variableMap cmap.ConcurrentMap, oReq *http.Request, req *proto.Request, result cmap.ConcurrentMap) (bool, error) {
 	success := false
 	for _, rule := range rules {
-		pathsResult, err := doPaths(env, rule, variableMap, oReq, req, result)
+		pathsResult, err := p.doPaths(env, rule, variableMap, oReq, req, result)
 		if err != nil || !pathsResult {
 			success = false
 			break
@@ -356,7 +375,7 @@ func doRules(env *cel.Env, rules []*core.Rule, variableMap cmap.ConcurrentMap, o
 	return success, nil
 }
 
-func doPaths(env *cel.Env, rule *core.Rule, variableMap cmap.ConcurrentMap, oReq *http.Request, req *proto.Request, result cmap.ConcurrentMap) (bool, error) {
+func (p *PocWork) doPaths(env *cel.Env, rule *core.Rule, variableMap cmap.ConcurrentMap, oReq *http.Request, req *proto.Request, result cmap.ConcurrentMap) (bool, error) {
 	// paths 就是多个path 任何一个path成功 即返回成功
 	success := false
 	var paths []string
@@ -404,7 +423,8 @@ func doPaths(env *cel.Env, rule *core.Rule, variableMap cmap.ConcurrentMap, oReq
 		req.Url.Path = exstrings.Replace(req.Url.Path, "+", "%20", -1)
 
 		newRequest := http2.NewRequest()
-		newRequest.SetProxy(args.Option.Proxy)
+		newRequest.SetTimeout(int(p.config.Timeout.Seconds()))
+		newRequest.SetProxy(p.config.Proxy)
 		for tuple := range headers.IterBuffered() {
 			newRequest.SetHeaders(tuple.Key, tuple.Val.(string))
 		}
@@ -432,6 +452,7 @@ func doPaths(env *cel.Env, rule *core.Rule, variableMap cmap.ConcurrentMap, oReq
 		variableMap.Set("response", resp)
 		result.Set("request", reqRaw)
 		result.Set("response", respRaw)
+		result.Set("content_length", resp.ContentLength)
 		// 将响应头加入search规则
 		//headerRaw := header.String()
 		//if header != nil {
@@ -439,7 +460,7 @@ func doPaths(env *cel.Env, rule *core.Rule, variableMap cmap.ConcurrentMap, oReq
 		//}
 		// 先判断响应页面是否匹配search规则
 		if rule.Search != "" {
-			result := doSearch(strings.TrimSpace(rule.Search), respRaw)
+			result := p.doSearch(strings.TrimSpace(rule.Search), respRaw)
 			if result != nil && len(result) > 0 { // 正则匹配成功
 				for k, v := range result {
 					variableMap.Set(k, v)
@@ -467,7 +488,7 @@ func doPaths(env *cel.Env, rule *core.Rule, variableMap cmap.ConcurrentMap, oReq
 	return success, nil
 }
 
-func doSearch(re string, body string) map[string]string {
+func (p *PocWork) doSearch(re string, body string) map[string]string {
 	r, err := regexp.Compile(re)
 	if err != nil {
 		log.Error(err)
@@ -490,7 +511,7 @@ func doSearch(re string, body string) map[string]string {
 	return nil
 }
 
-func newReverse() *proto.Reverse {
+func (p *PocWork) newReverse() *proto.Reverse {
 	//letters := "1234567890abcdefghijklmnopqrstuvwxyz"
 	//randSource := rand.New(rand.NewSource(time.Now().Unix()))
 	sub := utils.RandStr(8)
