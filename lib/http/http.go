@@ -25,6 +25,8 @@ func NewRequest(option args.Args, headers cmap.ConcurrentMap, redirect bool) *ht
 	if redirect {
 		request.SetRedirects(5)
 	}
+	// 关闭url自动编码
+	request.DisablePathNormalizing(true)
 	return request
 }
 

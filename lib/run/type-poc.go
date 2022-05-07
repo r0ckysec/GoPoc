@@ -229,6 +229,8 @@ func (p *PocWork) Output() {
 	}
 	defer newPool.Release()
 	request := http2.NewRequest()
+	// 关闭自动编码
+	request.DisablePathNormalizing(true)
 	//输出POC命中结果
 	for out := range p.watchDog.output {
 		if out == nil {
@@ -436,6 +438,8 @@ func (p *PocWork) doPaths(env *cel.Env, rule *core.Rule, variableMap cmap.Concur
 		req.Url.Path = exstrings.Replace(req.Url.Path, "+", "%20", -1)
 
 		newRequest := http2.NewRequest()
+		// 关闭自动编码
+		newRequest.DisablePathNormalizing(true)
 		newRequest.SetTimeout(int(p.config.Timeout.Seconds()))
 		newRequest.SetProxy(p.config.Proxy)
 		for tuple := range headers.IterBuffered() {
