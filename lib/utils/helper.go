@@ -140,3 +140,47 @@ func RandStr(ln int) string {
 	}
 	return *(*string)(unsafe.Pointer(&buf))
 }
+
+func RandomString(i ...int) string {
+	var length int
+	var str string
+	if len(i) != 1 {
+		length = 32
+	} else {
+		length = i[0]
+	}
+	Char := "01234567890abcdef"
+	for range Xrange(length) {
+		j := rand.Intn(len(Char) - 1)
+		str += Char[j : j+1]
+	}
+	return str
+}
+
+func Xrange(args ...int) []int {
+	var start, stop int
+	var step = 1
+	var r []int
+	switch len(args) {
+	case 1:
+		stop = args[0]
+		start = 0
+	case 2:
+		start, stop = args[0], args[1]
+	case 3:
+		start, stop, step = args[0], args[1], args[2]
+	default:
+		return nil
+	}
+	if start > stop {
+		return nil
+	}
+	if step < 0 {
+		return nil
+	}
+
+	for i := start; i <= stop; i += step {
+		r = append(r, i)
+	}
+	return r
+}

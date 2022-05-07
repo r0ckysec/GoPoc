@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/r0ckysec/go-security/log"
-	"github.com/r0ckysec/go-security/random"
 	"gopoc/lib/smap"
+	"gopoc/lib/utils"
 	"sync"
 	"time"
 )
@@ -143,7 +143,7 @@ func (p *Pool) Stop() {
 
 //生成工作票据
 func (p *Pool) NewTick() string {
-	return random.RandStr(32)
+	return utils.RandomString()
 }
 
 //获取线程数
