@@ -1,11 +1,11 @@
 package core
 
 import (
+	"github.com/r0ckysec/GoPoc/lib/utils"
 	"github.com/r0ckysec/go-security/log"
 	"github.com/thinkeridea/go-extend/exstrings"
 	"github.com/thoas/go-funk"
 	"gopkg.in/yaml.v2"
-	"gopoc/lib/utils"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
@@ -20,14 +20,14 @@ type Poc struct {
 }
 
 type Rule struct {
-	Method          string            `yaml:"method"`
-	Path            string            `yaml:"path"`
-	Paths           []string          `yaml:"paths"`
-	Headers         map[string]string `yaml:"headers"`
-	Body            string            `yaml:"body"`
-	Search          string            `yaml:"search"`
-	FollowRedirects bool              `yaml:"follow_redirects"`
-	Expression      string            `yaml:"expression"`
+	Method          string        `yaml:"method"`
+	Path            string        `yaml:"path"`
+	Paths           []string      `yaml:"paths"`
+	Headers         yaml.MapSlice `yaml:"headers"`
+	Body            string        `yaml:"body"`
+	Search          string        `yaml:"search"`
+	FollowRedirects bool          `yaml:"follow_redirects"`
+	Expression      string        `yaml:"expression"`
 }
 
 type Detail struct {

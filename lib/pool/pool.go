@@ -3,9 +3,9 @@ package pool
 import (
 	"errors"
 	"fmt"
+	"github.com/r0ckysec/GoPoc/lib/smap"
+	"github.com/r0ckysec/GoPoc/lib/utils"
 	"github.com/r0ckysec/go-security/log"
-	"gopoc/lib/smap"
-	"gopoc/lib/utils"
 	"sync"
 	"time"
 )

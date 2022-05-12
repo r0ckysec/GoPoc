@@ -6,25 +6,19 @@
 package main
 
 import (
-	"fmt"
+	"github.com/r0ckysec/GoPoc/lib/args"
+	"github.com/r0ckysec/GoPoc/lib/core"
+	"github.com/r0ckysec/GoPoc/lib/dns"
+	"github.com/r0ckysec/GoPoc/lib/run"
 	"github.com/r0ckysec/go-security/bin/misc"
 	"github.com/r0ckysec/go-security/log"
 	"github.com/thinkeridea/go-extend/exstrings"
-	"gopoc/lib/args"
-	"gopoc/lib/core"
-	"gopoc/lib/dns"
-	"gopoc/lib/run"
-	"net/http"
 	"strings"
 	"time"
 )
 import _ "net/http/pprof"
 
 func main() {
-	go func() {
-		fmt.Println(http.ListenAndServe("0.0.0.0:8989", nil))
-	}()
-
 	args.FlagParse()
 	//log.SetDebug()
 	//if progress.Bar != nil {

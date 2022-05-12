@@ -2,8 +2,8 @@ package run
 
 import (
 	cmap "github.com/orcaman/concurrent-map"
+	"github.com/r0ckysec/GoPoc/lib/core"
 	"github.com/r0ckysec/go-security/log"
-	"gopoc/lib/core"
 	"net/http"
 	"time"
 )

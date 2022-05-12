@@ -7,16 +7,16 @@ import (
 	"github.com/google/cel-go/cel"
 	cmap "github.com/orcaman/concurrent-map"
 	"github.com/panjf2000/ants/v2"
+	"github.com/r0ckysec/GoPoc/lib/core"
+	"github.com/r0ckysec/GoPoc/lib/dns"
+	http3 "github.com/r0ckysec/GoPoc/lib/http"
+	"github.com/r0ckysec/GoPoc/lib/pool"
+	"github.com/r0ckysec/GoPoc/lib/proto"
+	"github.com/r0ckysec/GoPoc/lib/utils"
 	"github.com/r0ckysec/go-security/bin/misc"
 	http2 "github.com/r0ckysec/go-security/fasthttp"
 	"github.com/r0ckysec/go-security/log"
 	"github.com/thinkeridea/go-extend/exstrings"
-	"gopoc/lib/core"
-	"gopoc/lib/dns"
-	http3 "gopoc/lib/http"
-	"gopoc/lib/pool"
-	"gopoc/lib/proto"
-	"gopoc/lib/utils"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -316,6 +316,35 @@ func (p *PocWork) executePoc(oReq *http.Request, poc *core.Poc, result cmap.Conc
 	//}
 	//sort.Strings(keys)
 
+	//优先解析newReverse(), 在进行random函数的解析，payload放最后解析
+	for _, setItem := range poc.Set {
+		key := setItem.Key.(string)
+		value := setItem.Value.(string)
+		// 反连平台
+		if value == "newReverse()" && !variableMap.Has(key) {
+			variableMap.Set(key, p.newReverse())
+			continue
+		}
+		if strings.Contains(strings.ToLower(key), "payload") {
+			continue
+		}
+		if strings.Contains(strings.ToLower(value), "random") && strings.Contains(strings.ToLower(value), "(") && !variableMap.Has(key) {
+			out, err := core.Evaluate(env, value, variableMap.Items())
+			if err != nil {
+				log.Error(err)
+				continue
+			}
+			switch value := out.Value().(type) {
+			case *proto.UrlType:
+				variableMap.Set(key, core.UrlTypeToString(value))
+			case int64:
+				variableMap.Set(key, int(value))
+			default:
+				variableMap.Set(key, fmt.Sprintf("%v", out))
+			}
+		}
+	}
+
 	for _, setItem := range poc.Set {
 		key := setItem.Key.(string)
 		value := setItem.Value.(string)
@@ -323,27 +352,54 @@ func (p *PocWork) executePoc(oReq *http.Request, poc *core.Poc, result cmap.Conc
 		//fmt.Println(key, value)
 		//if k != "payload" {
 		// 反连平台
-		if value == "newReverse()" {
-			variableMap.Set(key, p.newReverse())
-			//get, _ := variableMap.Get(key)
-			//fmt.Println(get, oReq.URL.String())
-			continue
-		}
-		out, err := core.Evaluate(env, value, variableMap.Items())
-		if err != nil {
-			log.Error(err)
-			continue
-		}
-		switch value := out.Value().(type) {
-		// set value 无论是什么类型都先转成string
-		case *proto.UrlType:
-			variableMap.Set(key, core.UrlTypeToString(value))
-		case int64:
-			variableMap.Set(key, int(value))
-		default:
-			variableMap.Set(key, fmt.Sprintf("%v", out))
-		}
+		//if value == "newReverse()" {
+		//	variableMap.Set(key, p.newReverse())
+		//	//get, _ := variableMap.Get(key)
+		//	//fmt.Println(get, oReq.URL.String())
+		//	continue
 		//}
+		if strings.Contains(strings.ToLower(key), "payload") {
+			continue
+		}
+		if !variableMap.Has(key) {
+			out, err := core.Evaluate(env, value, variableMap.Items())
+			if err != nil {
+				log.Error(err)
+				continue
+			}
+			switch value := out.Value().(type) {
+			// set value 无论是什么类型都先转成string
+			case *proto.UrlType:
+				variableMap.Set(key, core.UrlTypeToString(value))
+			case int64:
+				variableMap.Set(key, int(value))
+			default:
+				variableMap.Set(key, fmt.Sprintf("%v", out))
+			}
+			//}
+		}
+	}
+	//最后解析payload
+	for _, setItem := range poc.Set {
+		key := setItem.Key.(string)
+		value := setItem.Value.(string)
+		if strings.Contains(strings.ToLower(key), "payload") && !variableMap.Has(key) {
+			out, err := core.Evaluate(env, value, variableMap.Items())
+			if err != nil {
+				log.Error(err)
+				continue
+			}
+			switch value := out.Value().(type) {
+			// set value 无论是什么类型都先转成string
+			case *proto.UrlType:
+				variableMap.Set(key, core.UrlTypeToString(value))
+			case int64:
+				variableMap.Set(key, int(value))
+			default:
+				variableMap.Set(key, fmt.Sprintf("%v", out))
+			}
+			//}
+		}
 	}
 
 	//if p.Set["payload"] != "" {
@@ -407,7 +463,10 @@ func (p *PocWork) doPaths(env *cel.Env, rule *core.Rule, variableMap cmap.Concur
 		//	}
 		//}
 		headers := cmap.New()
-		headers.MSet(misc.ToMap(rule.Headers))
+		for _, header := range rule.Headers {
+			headers.Set(header.Key.(string), header.Value)
+		}
+		//headers.MSet(misc.ToMap(rule.Headers))
 		body := rule.Body
 		for tuple := range variableMap.IterBuffered() {
 			_, isMap := tuple.Val.(map[string]string)

@@ -1,4 +1,4 @@
-module gopoc
+module github.com/r0ckysec/GoPoc
 
 go 1.16
 
