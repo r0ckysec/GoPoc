@@ -318,6 +318,9 @@ func (p *PocWork) executePoc(oReq *http.Request, poc *core.Poc, result cmap.Conc
 
 	//优先解析newReverse(), 在进行random函数的解析，payload放最后解析
 	for _, setItem := range poc.Set {
+		if setItem.Key == "" {
+			continue
+		}
 		key := setItem.Key.(string)
 		value := setItem.Value.(string)
 		// 反连平台
@@ -346,6 +349,9 @@ func (p *PocWork) executePoc(oReq *http.Request, poc *core.Poc, result cmap.Conc
 	}
 
 	for _, setItem := range poc.Set {
+		if setItem.Key == "" {
+			continue
+		}
 		key := setItem.Key.(string)
 		value := setItem.Value.(string)
 		//expression := p.Set[k]
@@ -381,6 +387,9 @@ func (p *PocWork) executePoc(oReq *http.Request, poc *core.Poc, result cmap.Conc
 	}
 	//最后解析payload
 	for _, setItem := range poc.Set {
+		if setItem.Key == "" {
+			continue
+		}
 		key := setItem.Key.(string)
 		value := setItem.Value.(string)
 		if strings.Contains(strings.ToLower(key), "payload") && !variableMap.Has(key) {
@@ -464,6 +473,9 @@ func (p *PocWork) doPaths(env *cel.Env, rule *core.Rule, variableMap cmap.Concur
 		//}
 		headers := cmap.New()
 		for _, header := range rule.Headers {
+			if header.Key == "" {
+				continue
+			}
 			headers.Set(header.Key.(string), header.Value)
 		}
 		//headers.MSet(misc.ToMap(rule.Headers))
