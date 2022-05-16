@@ -429,13 +429,14 @@ func (p *PocWork) executePoc(oReq *http.Request, poc *core.Poc, result cmap.Conc
 
 func (p *PocWork) doGroups(env *cel.Env, groups map[string][]*core.Rule, variableMap cmap.ConcurrentMap, oReq *http.Request, req *proto.Request, result cmap.ConcurrentMap) (bool, error) {
 	// groups 就是多个rules 任何一个rules成功 即返回成功
-	for _, rules := range groups {
+	for id, rules := range groups {
 		rulesResult, err := p.doRules(env, rules, variableMap, oReq, req, result)
 		if err != nil || !rulesResult {
 			continue
 		}
 		// groups中一个rules成功 即返回成功
 		if rulesResult {
+			result.Set("ruleId", id)
 			return rulesResult, nil
 		}
 	}
