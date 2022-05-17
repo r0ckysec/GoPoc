@@ -19,7 +19,7 @@ require (
 	github.com/karlseguin/ccache/v2 v2.0.8
 	github.com/orcaman/concurrent-map v1.0.0
 	github.com/panjf2000/ants/v2 v2.4.8
-	github.com/r0ckysec/go-security v0.2.8
+	github.com/r0ckysec/go-security v0.2.9
 	github.com/schollz/progressbar/v3 v3.8.5
 	github.com/valyala/fasthttp v1.36.0
 )
