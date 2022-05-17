@@ -318,7 +318,7 @@ func (p *PocWork) executePoc(oReq *http.Request, poc *core.Poc, result cmap.Conc
 
 	//优先解析newReverse(), 在进行random函数的解析，payload放最后解析
 	for _, setItem := range poc.Set {
-		if setItem.Key == "" {
+		if setItem.Key == nil || setItem.Key == "" {
 			continue
 		}
 		key := setItem.Key.(string)
@@ -474,7 +474,7 @@ func (p *PocWork) doPaths(env *cel.Env, rule *core.Rule, variableMap cmap.Concur
 		//}
 		headers := cmap.New()
 		for _, header := range rule.Headers {
-			if header.Key == "" {
+			if header.Key == nil || header.Key == "" {
 				continue
 			}
 			headers.Set(header.Key.(string), header.Value)
