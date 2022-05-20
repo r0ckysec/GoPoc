@@ -480,7 +480,7 @@ func (p *PocWork) doPaths(env *cel.Env, rule *core.Rule, variableMap cmap.Concur
 			headers.Set(header.Key.(string), header.Value)
 		}
 		//headers.MSet(misc.ToMap(rule.Headers))
-		body := rule.Body
+		body := FixBody(rule.Body)
 		for tuple := range variableMap.IterBuffered() {
 			_, isMap := tuple.Val.(map[string]string)
 			if isMap {
@@ -623,4 +623,10 @@ func (p *PocWork) newReverse() *proto.Reverse {
 		Ip:                 "",
 		IsDomainNameServer: false,
 	}
+}
+
+func FixBody(body string) string {
+	body = exstrings.Replace(body, "\r\n", "\n", -1)
+	body = exstrings.Replace(body, "\n", "\r\n", -1)
+	return body
 }
