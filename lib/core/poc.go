@@ -12,29 +12,29 @@ import (
 )
 
 type Poc struct {
-	Name   string             `yaml:"name"`
-	Set    yaml.MapSlice      `yaml:"set"`
-	Rules  []*Rule            `yaml:"rules"`
-	Groups map[string][]*Rule `yaml:"groups"`
-	Detail Detail             `yaml:"detail"`
+	Name   string             `yaml:"name,omitempty"`
+	Set    yaml.MapSlice      `yaml:"set,omitempty"`
+	Rules  []*Rule            `yaml:"rules,omitempty"`
+	Groups map[string][]*Rule `yaml:"groups,omitempty"`
+	Detail Detail             `yaml:"detail,omitempty"`
 }
 
 type Rule struct {
-	Method          string        `yaml:"method"`
-	Path            string        `yaml:"path"`
-	Paths           []string      `yaml:"paths"`
-	Headers         yaml.MapSlice `yaml:"headers"`
-	Body            string        `yaml:"body"`
-	Search          string        `yaml:"search"`
-	FollowRedirects bool          `yaml:"follow_redirects"`
-	Expression      string        `yaml:"expression"`
+	Method          string        `yaml:"method,omitempty"`
+	Path            string        `yaml:"path,omitempty"`
+	Paths           []string      `yaml:"paths,omitempty"`
+	Headers         yaml.MapSlice `yaml:"headers,omitempty"`
+	Body            string        `yaml:"body,omitempty"`
+	Search          string        `yaml:"search,omitempty"`
+	FollowRedirects bool          `yaml:"follow_redirects,omitempty"`
+	Expression      string        `yaml:"expression,omitempty"`
 }
 
 type Detail struct {
-	Author      string   `yaml:"author"`
-	Links       []string `yaml:"links"`
-	Description string   `yaml:"description"`
-	Version     string   `yaml:"version"`
+	Author      string   `yaml:"author,omitempty"`
+	Links       []string `yaml:"links,omitempty"`
+	Description string   `yaml:"description,omitempty"`
+	Version     string   `yaml:"version,omitempty"`
 }
 
 func LoadSinglePoc(fileName string) (*Poc, error) {
