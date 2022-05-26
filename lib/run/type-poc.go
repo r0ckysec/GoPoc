@@ -12,7 +12,6 @@ import (
 	http3 "github.com/r0ckysec/GoPoc/lib/http"
 	"github.com/r0ckysec/GoPoc/lib/pool"
 	"github.com/r0ckysec/GoPoc/lib/proto"
-	"github.com/r0ckysec/GoPoc/lib/utils"
 	"github.com/r0ckysec/go-security/bin/misc"
 	http2 "github.com/r0ckysec/go-security/fasthttp"
 	"github.com/r0ckysec/go-security/log"
@@ -607,16 +606,23 @@ func (p *PocWork) doSearch(re string, body string) map[string]string {
 func (p *PocWork) newReverse() *proto.Reverse {
 	//letters := "1234567890abcdefghijklmnopqrstuvwxyz"
 	//randSource := rand.New(rand.NewSource(time.Now().Unix()))
-	sub := utils.RandStr(8)
-	dnshost := dns.ReverseHost.GetDomain()
+	//sub := utils.RandStr(8)
+	dnshost := dns.Server.GetDomain()
+	if len(dnshost) <= 9 {
+		log.Error("获取 dnshost 失败")
+		return nil
+	}
 	//if global.CeyeDomain == "" {
 	//	return &proto.Reverse{}
 	//} else {
 	//	dnshost = global.CeyeDomain
 	//}
-	urlStr := fmt.Sprintf("http://%s.%s", sub, dnshost)
+	urlStr := fmt.Sprintf("http://%s", dnshost)
 	u, _ := url.Parse(urlStr)
-	dns.ReverseHost.AddRequestCache(u.Hostname())
+	//fmt.Println(u.Hostname())
+	if dns.Server.Interactsh.State() {
+		dns.Server.Interactsh.AddRequestCache(u.Hostname())
+	}
 	return &proto.Reverse{
 		Url:                http3.ParseUrl(u),
 		Domain:             u.Hostname(),

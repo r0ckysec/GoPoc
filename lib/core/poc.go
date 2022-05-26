@@ -35,6 +35,7 @@ type Detail struct {
 	Links       []string `yaml:"links,omitempty"`
 	Description string   `yaml:"description,omitempty"`
 	Version     string   `yaml:"version,omitempty"`
+	Verify      bool     `yaml:"verify,omitempty"`
 }
 
 func LoadSinglePoc(fileName string) (*Poc, error) {

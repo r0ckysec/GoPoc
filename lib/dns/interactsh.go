@@ -10,6 +10,7 @@ import (
 	"github.com/projectdiscovery/interactsh/pkg/client"
 	"github.com/projectdiscovery/interactsh/pkg/server"
 	"github.com/r0ckysec/GoPoc/lib/channel"
+	"github.com/r0ckysec/GoPoc/lib/utils"
 	"github.com/r0ckysec/go-security/log"
 	"github.com/thinkeridea/go-extend/exstrings"
 	"strings"
@@ -62,7 +63,9 @@ func (i *Interactsh) State() bool {
 }
 
 func (i *Interactsh) GetDomain() string {
-	return i.client.URL()
+	sub := utils.RandStr(8)
+	domain := i.client.URL()
+	return strings.Join([]string{sub, domain}, ".")
 }
 
 func (i *Interactsh) AddRequestCache(key string) {
@@ -76,6 +79,7 @@ func (i *Interactsh) AddRequestCache(key string) {
 func (i *Interactsh) GetRequestCache(key string) *ccache.Item {
 	index := strings.Index(key, i.serverUrl)
 	substr := exstrings.SubString(key, 0, index-1)
+	//fmt.Println("GetRequestCache", substr)
 	return i.requestCache.Get(substr)
 }
 

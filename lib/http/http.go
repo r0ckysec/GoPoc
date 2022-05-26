@@ -36,11 +36,11 @@ func DoRequest(req *http.Request, method string, url string, data string) (*prot
 		defer headers.Reset()
 	}
 	if err != nil {
-		return nil, "", "", err
+		return nil, reqRaw, respRaw, err
 	}
 	resp, err := ParseResponse(url, response, headers)
 	if err != nil {
-		return nil, "", "", err
+		return nil, reqRaw, respRaw, err
 	}
 	return resp, reqRaw, respRaw, err
 }

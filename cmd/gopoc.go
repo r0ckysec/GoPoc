@@ -24,13 +24,14 @@ func main() {
 	//if progress.Bar != nil {
 	//	defer progress.Bar.Close()
 	//}
-	dns.ReverseHost = dns.NewInteractsh()
-	if !dns.ReverseHost.State() {
+	dns.Server = dns.NewServer()
+	dns.Server.Interactsh = dns.NewInteractsh()
+	if !dns.Server.Interactsh.State() {
 		log.Yellow("reverse host failed!")
 		return
 	} else {
-		defer dns.ReverseHost.Close()
-		dns.ReverseHost.StartPolling()
+		defer dns.Server.Interactsh.Close()
+		dns.Server.Interactsh.StartPolling()
 	}
 
 	scan := run.NewPocScan()

@@ -503,28 +503,32 @@ func reverseCheck(r *proto.Reverse, timeout int64) bool {
 	defer timeOut.Stop()
 	<-ticker.C
 
-	cache := dns.ReverseHost.GetRequestCache(r.Domain)
-	if cache != nil {
-		//fmt.Println("reverseCheck", cache)
-		result := cache.Value().(*channel.Channel)
-		for {
-			select {
-			case res, ok := <-result.C:
-				if !ok {
+	if dns.Server.Interactsh.State() {
+		cache := dns.Server.Interactsh.GetRequestCache(r.Domain)
+		if cache != nil {
+			//fmt.Println("reverseCheck", cache)
+			result := cache.Value().(*channel.Channel)
+			for {
+				select {
+				case res, ok := <-result.C:
+					if !ok {
+						return false
+					}
+					//fmt.Println("reverseCheck", res)
+					if res {
+						dns.Server.Interactsh.DeleteCache(r.Domain)
+					} else {
+						dns.Server.Interactsh.ResetCache(r.Domain)
+					}
+					return res
+				case <-timeOut.C:
+					result.SafeClose()
 					return false
 				}
-				//fmt.Println("reverseCheck", res)
-				if res {
-					dns.ReverseHost.DeleteCache(r.Domain)
-				} else {
-					dns.ReverseHost.ResetCache(r.Domain)
-				}
-				return res
-			case <-timeOut.C:
-				result.SafeClose()
-				return false
 			}
 		}
+	} else {
+		return dns.Server.CheckDnslog(r.Domain)
 	}
 	return false
 	//if global.CeyeApi == "" || r.Domain == "" {
