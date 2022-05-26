@@ -487,7 +487,7 @@ func (p *PocWork) doPaths(env *cel.Env, rule *core.Rule, variableMap cmap.Concur
 			}
 			value := fmt.Sprintf("%v", tuple.Val)
 			for t := range headers.IterBuffered() {
-				a := exstrings.Replace(t.Val.(string), "{{"+tuple.Key+"}}", value, -1)
+				a := exstrings.Replace(fmt.Sprintf("%v", t.Val), "{{"+tuple.Key+"}}", value, -1)
 				headers.Set(t.Key, a)
 			}
 
@@ -543,7 +543,7 @@ func (p *PocWork) doPaths(env *cel.Env, rule *core.Rule, variableMap cmap.Concur
 		if resp != nil {
 			result.Set("content_length", resp.ContentLength)
 		} else {
-			result.Set("content_length", 0)
+			result.Set("content_length", int32(0))
 		}
 		// 将响应头加入search规则
 		//headerRaw := header.String()
