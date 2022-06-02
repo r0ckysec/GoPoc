@@ -26,7 +26,7 @@ func FlagParse() {
 	flagSet.BoolVarP(&Option.Debug, "debug", "d", false, "Enable debug mode.")
 	flagSet.BoolVarP(&Option.Verbose, "verbose", "v", false, "Enable verbose mode.")
 	flagSet.IntVarP(&Option.Threads, "threads", "T", 10, "并发线程数")
-	flagSet.IntVarP(&Option.Timeout, "timeout", "tO", 5, "请求超时时间")
+	flagSet.IntVarP(&Option.Timeout, "timeout", "tO", 10, "请求超时时间")
 	flagSet.StringVarP(&Option.Proxy, "proxy", "P", "", "设置代理")
 	flagSet.StringVarP(&Option.Target, "target", "t", "", "单个或的多个目标测试")
 	flagSet.StringVarP(&Option.Pocs, "pocs", "p", "pocs", "加载poc路径")

@@ -9,11 +9,11 @@ import (
 	"github.com/panjf2000/ants/v2"
 	"github.com/r0ckysec/GoPoc/lib/core"
 	"github.com/r0ckysec/GoPoc/lib/dns"
-	http3 "github.com/r0ckysec/GoPoc/lib/http"
+	gchttp "github.com/r0ckysec/GoPoc/lib/http"
 	"github.com/r0ckysec/GoPoc/lib/pool"
 	"github.com/r0ckysec/GoPoc/lib/proto"
 	"github.com/r0ckysec/go-security/bin/misc"
-	http2 "github.com/r0ckysec/go-security/fasthttp"
+	gshttp "github.com/r0ckysec/go-security/fasthttp"
 	"github.com/r0ckysec/go-security/log"
 	"github.com/thinkeridea/go-extend/exstrings"
 	"net/http"
@@ -227,7 +227,7 @@ func (p *PocWork) Output() {
 		return
 	}
 	defer newPool.Release()
-	request := http2.NewRequest()
+	request := gshttp.NewRequest()
 	// 关闭自动编码
 	request.DisablePathNormalizing(true)
 	//输出POC命中结果
@@ -301,7 +301,7 @@ func (p *PocWork) executePoc(oReq *http.Request, poc *core.Poc, result cmap.Conc
 		return false, err
 	}
 	variableMap := cmap.New()
-	req, err := http3.ParseRequest(oReq)
+	req, err := gchttp.ParseRequest(oReq)
 	if err != nil {
 		log.Error(err)
 		return false, err
@@ -508,7 +508,7 @@ func (p *PocWork) doPaths(env *cel.Env, rule *core.Rule, variableMap cmap.Concur
 		req.Url.Path = exstrings.Replace(req.Url.Path, " ", "%20", -1)
 		req.Url.Path = exstrings.Replace(req.Url.Path, "+", "%20", -1)
 
-		newRequest := http2.NewRequest()
+		newRequest := gshttp.NewRequest()
 		// 关闭自动编码
 		newRequest.DisablePathNormalizing(true)
 		newRequest.SetTimeout(int(p.config.Timeout.Seconds()))
@@ -528,7 +528,7 @@ func (p *PocWork) doPaths(env *cel.Env, rule *core.Rule, variableMap cmap.Concur
 		//for tuple := range headers.IterBuffered() {
 		//	newRequest.Header.Set(tuple.Key, tuple.Val.(string))
 		//}
-		resp, reqRaw, respRaw, err := http3.DoRequest(newRequest, rule.Method, fmt.Sprintf("%s://%s%s", req.Url.Scheme, req.Url.Host, req.Url.Path), body)
+		resp, reqRaw, respRaw, err := gchttp.DoRequest(newRequest, rule.Method, fmt.Sprintf("%s://%s%s", req.Url.Scheme, req.Url.Host, req.Url.Path), body)
 		if err != nil {
 			if !strings.Contains(rule.Expression, ".wait(") {
 				return false, err
@@ -624,7 +624,7 @@ func (p *PocWork) newReverse() *proto.Reverse {
 		dns.Server.Interactsh.AddRequestCache(u.Hostname())
 	}
 	return &proto.Reverse{
-		Url:                http3.ParseUrl(u),
+		Url:                gchttp.ParseUrl(u),
 		Domain:             u.Hostname(),
 		Ip:                 "",
 		IsDomainNameServer: false,
