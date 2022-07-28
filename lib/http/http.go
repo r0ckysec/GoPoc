@@ -2,8 +2,6 @@ package http
 
 import (
 	"bytes"
-	cmap "github.com/orcaman/concurrent-map"
-	"github.com/r0ckysec/GoPoc/lib/args"
 	"github.com/r0ckysec/GoPoc/lib/proto"
 	"github.com/r0ckysec/go-security/bin/misc"
 	"github.com/r0ckysec/go-security/fasthttp"
@@ -15,20 +13,20 @@ import (
 	"strings"
 )
 
-func NewRequest(option args.Args, headers cmap.ConcurrentMap, redirect bool) *http.Request {
-	request := http.NewRequest()
-	request.SetTimeout(option.Timeout)
-	request.SetProxy(option.Proxy)
-	for tuple := range headers.IterBuffered() {
-		request.SetHeaders(tuple.Key, tuple.Val.(string))
-	}
-	if redirect {
-		request.SetRedirects(5)
-	}
-	// 关闭url自动编码
-	request.DisablePathNormalizing(true)
-	return request
-}
+//func NewRequest(option args.Args, headers cmap.ConcurrentMap, redirect bool) *http.Request {
+//	request := http.NewRequest()
+//	request.SetTimeout(option.Timeout)
+//	request.SetProxy(option.Proxy)
+//	for tuple := range headers.IterBuffered() {
+//		request.SetHeaders(tuple.Key, tuple.Val.(string))
+//	}
+//	if redirect {
+//		request.SetRedirects(5)
+//	}
+//	// 关闭url自动编码
+//	request.DisablePathNormalizing(true)
+//	return request
+//}
 
 func DoRequest(req *http.Request, method string, url string, data string) (*proto.Response, string, string, error) {
 	response, headers, reqRaw, respRaw, err := req.HTTPRaw(method, url, data)

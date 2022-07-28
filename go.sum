@@ -494,6 +494,8 @@ github.com/prometheus/procfs v0.0.2/go.mod h1:TjEm7ze935MbeOT/UhFTIMYKhuLP4wbCsT
 github.com/prometheus/procfs v0.0.8/go.mod h1:7Qr8sr6344vo1JqZ6HhLceV9o3AJ1Ff+GxbHq6oeK9A=
 github.com/r0ckysec/go-security v0.3.2-rc3 h1:P/TSn2mUd1Qp5C2tA87lnV3z2y7DATEFGdUcF7z6cjs=
 github.com/r0ckysec/go-security v0.3.2-rc3/go.mod h1:+MjfDaMPT+0kQoMsxuNGIC5ev2XpQPr5rRyXvYnhiFY=
+github.com/r0ckysec/go-security v0.3.2-rc4 h1:w7N/GSFZ5XqDHdIJQ/4Fk619R+k96+4mMnPlIse06n4=
+github.com/r0ckysec/go-security v0.3.2-rc4/go.mod h1:+MjfDaMPT+0kQoMsxuNGIC5ev2XpQPr5rRyXvYnhiFY=
 github.com/rcrowley/go-metrics v0.0.0-20181016184325-3113b8401b8a/go.mod h1:bCqnVzQkZxMG4s8nGwiZ5l3QUCyqpo9Y+/ZMZ9VjZe4=
 github.com/remeh/sizedwaitgroup v1.0.0/go.mod h1:3j2R4OIe/SeS6YDhICBy22RWjJC5eNCJ1V+9+NVNYlo=
 github.com/rivo/uniseg v0.2.0 h1:S1pD9weZBuJdFmowNwbpi7BJ8TNftyUImj/0WQi72jY=

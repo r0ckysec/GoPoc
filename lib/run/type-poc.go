@@ -31,8 +31,8 @@ import (
  * @Date 2022/2/15 13:59
  */
 
-//10分钟的超时设置
-const timeout = time.Minute * 10
+//5分钟的超时设置
+const timeout = time.Minute * 5
 
 type PocWork struct {
 	config Config
@@ -51,6 +51,7 @@ type PocWork struct {
 		wg      *sync.WaitGroup
 		trigger bool
 	}
+	Close bool
 }
 
 type Config struct {
@@ -75,6 +76,7 @@ func NewWork(config Config) *PocWork {
 
 	p := &PocWork{
 		config: config,
+		Close:  false,
 	}
 
 	hostThreads := len(p.config.Target)
@@ -465,6 +467,10 @@ func (p *PocWork) doPaths(env *cel.Env, rule *core.Rule, variableMap cmap.Concur
 		paths = append(paths, rule.Path)
 	}
 	for _, path := range paths {
+		//fmt.Println(p.Close)
+		if p.Close {
+			return false, nil
+		}
 		//if i > 0 {
 		//	fmt.Println(variableMap["dnshost"])
 		//	if reverse, ok := variableMap["dnshost"].(*proto.Reverse); ok {
@@ -499,11 +505,11 @@ func (p *PocWork) doPaths(env *cel.Env, rule *core.Rule, variableMap cmap.Concur
 			body = exstrings.Replace(strings.TrimSpace(body), "{{"+tuple.Key+"}}", value, -1)
 		}
 
-		if oReq.URL.Path != "" && oReq.URL.Path != "/" {
-			req.Url.Path = fmt.Sprint(oReq.URL.Path, path)
-		} else {
-			req.Url.Path = path
-		}
+		//if oReq.URL.Path != "" && oReq.URL.Path != "/" {
+		//	req.Url.Path = fmt.Sprint(oReq.URL.Path, path)
+		//} else {
+		req.Url.Path = path
+		//}
 		// 某些poc没有区分path和query，需要处理
 		req.Url.Path = exstrings.Replace(req.Url.Path, " ", "%20", -1)
 		req.Url.Path = exstrings.Replace(req.Url.Path, "+", "%20", -1)
@@ -517,7 +523,7 @@ func (p *PocWork) doPaths(env *cel.Env, rule *core.Rule, variableMap cmap.Concur
 			newRequest.SetHeaders(tuple.Key, tuple.Val.(string))
 		}
 		if rule.FollowRedirects {
-			newRequest.SetRedirects(5)
+			newRequest.SetRedirects(3)
 		}
 		//newRequest, err := http.NewRequest(rule.Method, fmt.Sprintf("%s://%s%s", req.Url.Scheme, req.Url.Host, req.Url.Path), strings.NewReader(body))
 		//if err != nil {
@@ -531,15 +537,18 @@ func (p *PocWork) doPaths(env *cel.Env, rule *core.Rule, variableMap cmap.Concur
 		resp, reqRaw, respRaw, err := gchttp.DoRequest(newRequest, rule.Method, fmt.Sprintf("%s://%s%s", req.Url.Scheme, req.Url.Host, req.Url.Path), body)
 		if err != nil {
 			if !strings.Contains(rule.Expression, ".wait(") {
-				return false, err
+				continue
+				//return false, err
 			}
 		}
 		//if resp == nil {
 		//	resp = &proto.Response{}
 		//}
 		variableMap.Set("response", resp)
-		result.Set("request", reqRaw)
-		result.Set("response", respRaw)
+		if len(rule.Expression) > 0 && rule.Expression != "true" {
+			result.Set("request", reqRaw)
+			result.Set("response", respRaw)
+		}
 		if resp != nil {
 			result.Set("content_length", resp.ContentLength)
 		} else {
@@ -559,7 +568,8 @@ func (p *PocWork) doPaths(env *cel.Env, rule *core.Rule, variableMap cmap.Concur
 				}
 				//return true, nil
 			} else {
-				return false, nil
+				continue
+				//return false, nil
 			}
 		}
 
@@ -573,6 +583,9 @@ func (p *PocWork) doPaths(env *cel.Env, rule *core.Rule, variableMap cmap.Concur
 			success = false // 如果最后一步执行失败，就算前面成功了最终依旧是失败
 			continue
 		} else {
+			if rtEcho, ok := variableMap.Get("rt_echo"); ok {
+				result.Set("rt_echo", rtEcho)
+			}
 			success = true
 			break
 		}
